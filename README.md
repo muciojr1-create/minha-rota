@@ -2,6 +2,10 @@
 
 App de celular para a viagem a Pernambuco: roteiro das cidades, combustível, hospedagem, outros gastos, quilometragem e mapa final.
 
+- **Link do app (abra no celular e instale):** https://muciojr1-create.github.io/minha-rota/
+- **Código:** https://github.com/muciojr1-create/minha-rota
+- **Publicar mudança:** edite `app/index.html`, aumente o número em `CACHE` no `app/sw.js`, faça commit e push. O GitHub Pages atualiza em 1 minuto.
+
 ## Arquivos
 
 | Arquivo | Para que serve |

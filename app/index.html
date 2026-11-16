@@ -143,6 +143,41 @@ nav.tabs .wrap{display:grid;grid-template-columns:repeat(6,1fr);padding-left:max
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:1000;max-width:calc(100% - 32px);text-align:center}
 .note{font-size:12.5px;color:var(--muted);line-height:1.45}
 .hint{background:color-mix(in srgb,var(--sun) 16%,var(--surface));border:1px solid color-mix(in srgb,var(--sun) 45%,var(--line));border-radius:12px;padding:10px 12px;font-size:13px}
+/* Cores suaves: cada aba tem sua cor, cartões com faixa colorida, toques com animação. */
+:root{ --tint:var(--sea); }
+body:has(#v-inicio:not([hidden])){--tint:var(--sea)}
+body:has(#v-roteiro:not([hidden])){--tint:var(--leaf)}
+body:has(#v-perto:not([hidden])){--tint:#7B6CD9}
+body:has(#v-gastos:not([hidden])){--tint:var(--coral)}
+body:has(#v-mapa:not([hidden])){--tint:#E08A2E}
+body:has(#v-ajustes:not([hidden])){--tint:#5B8DB8}
+body{background:linear-gradient(180deg,color-mix(in srgb,var(--tint) 14%,var(--bg)) 0,var(--bg) 340px) fixed;transition:background .4s}
+header.top{background:color-mix(in srgb,var(--tint) 14%,var(--bg));transition:background .4s}
+header.top h1{color:color-mix(in srgb,var(--tint) 70%,var(--ink))}
+.card{border-top:4px solid color-mix(in srgb,var(--tint) 55%,var(--line));background:linear-gradient(180deg,color-mix(in srgb,var(--tint) 6%,var(--surface)),var(--surface) 90px)}
+.view > .card:nth-child(4n+2){border-top-color:color-mix(in srgb,var(--sun) 70%,var(--line))}
+.view > .card:nth-child(4n+3){border-top-color:color-mix(in srgb,var(--coral) 50%,var(--line))}
+.view > .card:nth-child(4n+4){border-top-color:color-mix(in srgb,var(--leaf) 55%,var(--line))}
+.card h2{color:color-mix(in srgb,var(--tint) 60%,var(--ink))}
+.stat:nth-child(4n+1){background:color-mix(in srgb,var(--sea) 10%,var(--surface))}
+.stat:nth-child(4n+2){background:color-mix(in srgb,var(--coral) 10%,var(--surface))}
+.stat:nth-child(4n+3){background:color-mix(in srgb,var(--leaf) 10%,var(--surface))}
+.stat:nth-child(4n+4){background:color-mix(in srgb,var(--sun) 14%,var(--surface))}
+.btn{transition:transform .12s,box-shadow .2s,background .2s}
+.btn:active{transform:scale(.95)}
+.btn.primary{background:linear-gradient(135deg,var(--sea),color-mix(in srgb,var(--sea) 70%,var(--leaf)));box-shadow:0 4px 12px color-mix(in srgb,var(--sea) 30%,transparent)}
+.tab{transition:color .2s}
+.tab svg{transition:transform .2s;border-radius:12px;padding:3px;width:30px;height:28px}
+.tab[aria-current="page"]{color:var(--tint)}
+.tab[aria-current="page"] svg{background:color-mix(in srgb,var(--tint) 18%,transparent);transform:translateY(-2px)}
+.tab:active svg{transform:scale(.88)}
+.view:not([hidden]) > *{animation:entra .35s ease both}
+.view:not([hidden]) > *:nth-child(2){animation-delay:.05s}
+.view:not([hidden]) > *:nth-child(3){animation-delay:.1s}
+.view:not([hidden]) > *:nth-child(n+4){animation-delay:.15s}
+@keyframes entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.item{transition:background .2s;border-radius:10px}
+.item:active{background:color-mix(in srgb,var(--tint) 8%,transparent)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>

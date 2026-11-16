@@ -1,5 +1,5 @@
 // Guarda o app no aparelho para abrir mesmo sem internet
-const CACHE = 'minha-rota-v4';
+const CACHE = 'minha-rota-v5';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icone-180.png', './icone-192.png', './icone-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'];

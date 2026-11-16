@@ -178,6 +178,8 @@ header.top h1{color:color-mix(in srgb,var(--tint) 70%,var(--ink))}
 @keyframes entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .item{transition:background .2s;border-radius:10px}
 .item:active{background:color-mix(in srgb,var(--tint) 8%,transparent)}
+.fotoH{width:56px;height:56px;border-radius:10px;object-fit:cover;flex:none;background:var(--surface2)}
+.btn.fotos{background:color-mix(in srgb,var(--coral) 14%,var(--surface));border-color:color-mix(in srgb,var(--coral) 40%,var(--line));color:color-mix(in srgb,var(--coral) 75%,var(--ink))}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -827,7 +829,7 @@ function renderPertoHeader(){
   const pes = Math.max(1, num(S.config.pessoas)||2);
   const links = [
     ["Postos no Google Maps", `https://www.google.com/maps/search/posto+de+gasolina/@${lat},${lng},14z`],
-    ["Hotéis no Google Maps", `https://www.google.com/maps/search/hoteis/@${lat},${lng},14z`],
+    ["📷 Hotéis com fotos (Google)", `https://www.google.com/maps/search/hoteis/@${lat},${lng},14z`],
     ["Booking", `https://www.booking.com/searchresults.pt-br.html?ss=${encodeURIComponent(cid)}&latitude=${lat}&longitude=${lng}&checkin=${ci}&checkout=${co}&group_adults=${pes}&no_rooms=1`],
     ["Airbnb", `https://www.airbnb.com.br/s/${encodeURIComponent(cid)}/homes?checkin=${ci}&checkout=${co}&adults=${pes}`],
     ["Preços ANP da semana", "https://preco.anp.gov.br/"],
@@ -852,6 +854,11 @@ async function overpass(q){
       if(res.ok){ const j = await res.json(); if(j && j.elements) return j; } }catch(e){}
   }
   return null;
+}
+function fotoOSM(t){
+  if(t.image && /^https:\/\//.test(t.image) && /\.(jpe?g|png|webp)(\?|$)/i.test(t.image)) return t.image;
+  const c = t.wikimedia_commons; if(c && /^File:/i.test(c)) return "https://commons.wikimedia.org/wiki/Special:FilePath/"+encodeURIComponent(c.slice(5))+"?width=160";
+  return "";
 }
 const wazeUrl = (lat,lng) => `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
 async function buscarPerto(){
@@ -890,13 +897,14 @@ function renderPertoLista(){
       ? [t.brand && t.brand!==p.nome ? t.brand : "", t.opening_hours==="24/7" ? "24h" : "", t["fuel:ethanol"]==="yes"?"etanol":"", t["fuel:diesel"]==="yes"?"diesel":"", t["fuel:cng"]==="yes"?"GNV":""].filter(Boolean)
       : [({hotel:"Hotel",motel:"Motel",guest_house:"Pousada",hostel:"Hostel",apartment:"Apartamento",chalet:"Chalé"})[t.tourism]||"", t.stars?t.stars+"★":""].filter(Boolean);
     const q = encodeURIComponent(p.nome+" "+(here?.cidade||""));
-    return `<div class="item"><div class="ico ${p.tipo==="posto"?"fuel":"hosp"}"><span class="num" style="font-weight:700">${i+1}</span></div>
+    const foto = p.tipo==="hosp" ? fotoOSM(t) : "";
+    return `<div class="item">${foto?`<img class="fotoH" src="${esc(foto)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=&quot;ico hosp&quot;><span class=&quot;num&quot; style=&quot;font-weight:700&quot;>${i+1}</span></div>'">`:`<div class="ico ${p.tipo==="posto"?"fuel":"hosp"}"><span class="num" style="font-weight:700">${i+1}</span></div>`}
       <div style="min-width:0"><div class="t">${esc(p.nome)}</div><div class="s">${esc(extra.join(" · "))}${meu?` <span class="chip good">você pagou ${brl(meu.preco)}</span>`:""}</div></div>
       <div class="v">${n1(p.d)}<small>km</small></div>
       <div class="acts">
         <a class="btn sm waze" target="_blank" rel="noopener" href="${wazeUrl(p.lat,p.lng)}">Waze</a>
         <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}">Rota</a>
-        <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Ver no Google</a>
+        ${p.tipo==="hosp" ? `<a class="btn sm fotos" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">📷 Fotos e notas</a><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/search?tbm=isch&q=${q}">Mais fotos</a>` : `<a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Ver no Google</a>`}
         ${p.tipo==="posto" ? `<button class="btn sm" type="button" data-abast-aqui="${i}">Abasteci aqui</button>` :
           `<a class="btn sm" target="_blank" rel="noopener" href="https://www.booking.com/searchresults.pt-br.html?ss=${q}">Booking</a>${t.website?`<a class="btn sm" target="_blank" rel="noopener" href="${esc(t.website)}">Site</a>`:""}<button class="btn sm" type="button" data-hosp-aqui="${i}">Fiquei aqui</button>`}
       </div></div>`;
@@ -990,7 +998,8 @@ function renderRoteiro(){
       <div class="v" style="display:flex;gap:4px;align-items:center"><button class="btn sm" type="button" data-parada="noite:${p.id}" data-d="-" aria-label="Menos uma noite">−</button><span style="min-width:44px;text-align:center">${num(p.noites)}<small>noite${num(p.noites)===1?"":"s"}</small></span><button class="btn sm" type="button" data-parada="noite:${p.id}" data-d="+" aria-label="Mais uma noite">+</button></div>
       <div class="acts">
         <a class="btn sm waze" target="_blank" rel="noopener" href="${wazeUrl(p.lat,p.lng)}">Waze</a>
-        ${dorme ? `<a class="btn sm" target="_blank" rel="noopener" href="https://www.booking.com/searchresults.pt-br.html?ss=${q}&checkin=${dt.ci}&checkout=${dt.co}&group_adults=${pes}&no_rooms=1">Booking</a>
+        ${dorme ? `<a class="btn sm fotos" target="_blank" rel="noopener" href="https://www.google.com/maps/search/${encodeURIComponent("hotéis e pousadas em "+p.nome)}/@${p.lat},${p.lng},13z">📷 Hotéis com fotos</a>
+        <a class="btn sm" target="_blank" rel="noopener" href="https://www.booking.com/searchresults.pt-br.html?ss=${q}&checkin=${dt.ci}&checkout=${dt.co}&group_adults=${pes}&no_rooms=1">Booking</a>
         <a class="btn sm" target="_blank" rel="noopener" href="https://www.airbnb.com.br/s/${q}/homes?checkin=${dt.ci}&checkout=${dt.co}&adults=${pes}">Airbnb</a>` : ""}
         <button class="btn sm" type="button" data-parada="perto:${p.id}">Postos e hotéis lá</button>
         ${i>0?`<button class="btn sm" type="button" data-parada="sobe:${p.id}" aria-label="Subir">↑</button>`:""}

@@ -4,7 +4,8 @@ App de celular para a viagem a Pernambuco: roteiro das cidades, combustível, ho
 
 - **Link do app (abra no celular e instale):** https://muciojr1-create.github.io/minha-rota/
 - **Código:** https://github.com/muciojr1-create/minha-rota
-- **Publicar mudança:** edite `app/index.html`, aumente o número em `CACHE` no `app/sw.js`, faça commit e push. O GitHub Pages atualiza em 1 minuto.
+- **Instalador:** `instalador-minha-rota.png` (QR code + passo a passo)
+- **Publicar mudança:** veja o CLAUDE.md.
 
 ## Arquivos
 
@@ -20,7 +21,7 @@ App de celular para a viagem a Pernambuco: roteiro das cidades, combustível, ho
 - **Roteiro**: cidades na ordem e noites em cada uma. Calcula a rota, km, tempo, litros e custo de cada trecho, lista os postos no caminho e abre Waze, Booking e Airbnb com as datas certas.
 - **Perto**: pelo GPS, postos e hospedagens ao redor, mapa ao vivo do Waze e atalhos para Google Maps, Booking, Airbnb e preços da ANP.
 - **Gastos**: abastecimentos, hospedagens e outros gastos (editar e excluir).
-- **Mapa**: mapa final com trajeto, rota planejada, pontos de cada gasto e resumo por cidade.
+- **Mapa**: mapa final com o caminho feito (ligando os pontos dos gastos), rota planejada, pontos de cada gasto e resumo por cidade.
 - **Ajustes**: veículo, datas, orçamento, backup e planilha CSV.
 
 ## Serviços usados (gratuitos, sem chave)

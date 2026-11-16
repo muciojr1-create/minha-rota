@@ -197,9 +197,9 @@ nav.tabs .wrap{display:grid;grid-template-columns:repeat(6,1fr);padding-left:max
       <button class="btn primary" type="button" data-add="abast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16M3 21h13M15 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3M7 8h5"/></svg>Abasteci</button>
       <button class="btn" type="button" data-add="hosp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20V7M21 20v-6a3 3 0 0 0-3-3H10v6M3 17h18M7 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>Hospedagem</button>
       <button class="btn" type="button" data-add="outro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Outro gasto</button>
-      <button class="btn" type="button" id="btnRec"><span class="dot" id="recDot"></span><span id="recTxt">Gravar trajeto</span></button>
+      <button class="btn" type="button" id="btnGoogleViagem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Viagem no Google</button>
     </div>
-    <p class="note" id="recNote" style="margin:-4px 2px 0">O trajeto grava pelo GPS enquanto o app está aberto na tela. Ele desenha o caminho no mapa final.</p>
+    <p class="note" style="margin:-4px 2px 0">O app não grava o GPS o tempo todo. Ele liga os lugares onde você abasteceu, dormiu e gastou, e mostra o caminho de um ponto a outro no Google Maps.</p>
 
     <div class="card">
       <h2>Quanto vai custar o próximo trecho?</h2>
@@ -307,13 +307,13 @@ nav.tabs .wrap{display:grid;grid-template-columns:repeat(6,1fr);padding-left:max
   <!-- MAPA FINAL -->
   <section class="view" id="v-mapa" hidden>
     <div class="card">
-      <div class="spread" style="margin-bottom:10px"><h2>Mapa da viagem</h2><button class="btn sm" type="button" id="btnCopiar">Copiar resumo</button></div>
+      <div class="spread" style="margin-bottom:10px;flex-wrap:wrap"><h2 style="margin:0">Mapa da viagem</h2><div class="row"><button class="btn sm primary" type="button" id="btnGoogleViagem2">Abrir no Google Maps</button><button class="btn sm" type="button" id="btnCopiar">Copiar resumo</button></div></div>
       <div class="map tall" id="mapFinal"></div>
       <div class="legend" style="margin-top:10px">
         <span><i style="background:var(--sea)"></i>Abastecimento</span>
         <span><i style="background:var(--coral)"></i>Hospedagem</span>
         <span><i style="background:var(--leaf)"></i>Outros</span>
-        <span><i style="background:var(--sun)"></i>Trajeto feito</span>
+        <span><i style="background:var(--sun)"></i>Caminho feito</span>
         <span><i style="background:var(--muted)"></i>Rota planejada</span>
       </div>
     </div>
@@ -354,18 +354,21 @@ nav.tabs .wrap{display:grid;grid-template-columns:repeat(6,1fr);padding-left:max
     </form>
 
     <div class="card">
-      <h2>Seus dados</h2>
-      <p class="note" style="margin-top:0">Tudo fica guardado neste celular. Faça um backup de vez em quando para não perder nada se limpar o navegador.</p>
+      <h2>Cópia de segurança</h2>
+      <p class="note" style="margin-top:0">Tudo o que você lança fica guardado <b>só dentro deste celular</b>. Se o celular quebrar, for roubado ou o app for apagado, os dados somem.</p>
+      <p class="note">A cópia é um arquivo pequeno com todos os seus dados. Toque em <b>“Guardar uma cópia”</b> e escolha o WhatsApp (mande para você mesmo) ou o Google Drive. Faça isso uma vez por dia na viagem.</p>
+      <p class="note">Se precisar, toque em <b>“Recuperar uma cópia”</b> e escolha esse arquivo: tudo volta como estava.</p>
+      <p class="note" id="ultimaCopia" style="font-weight:600"></p>
       <div class="btns">
-        <button class="btn" type="button" id="btnExport">Baixar backup</button>
-        <label class="btn" for="fileImport" style="cursor:pointer">Restaurar backup</label>
-        <button class="btn" type="button" id="btnCsv">Planilha (CSV)</button>
-        <button class="btn" type="button" id="btnExemplo">Carregar exemplo</button>
+        <button class="btn primary" type="button" id="btnExport">Guardar uma cópia</button>
+        <label class="btn" for="fileImport" style="cursor:pointer">Recuperar uma cópia</label>
+        <button class="btn" type="button" id="btnCsv">Planilha dos gastos</button>
+        <button class="btn" type="button" id="btnExemplo">Ver um exemplo</button>
       </div>
       <input type="file" id="fileImport" accept="application/json,.json" hidden>
       <button class="btn danger block" type="button" id="btnLimpar" style="margin-top:8px">Apagar todos os dados</button>
       <div id="confirmLimpar" class="hint" style="margin-top:8px" hidden>
-        Isso apaga todos os lançamentos e o trajeto deste aparelho.
+        Isso apaga todos os lançamentos e o roteiro deste aparelho.
         <div class="row" style="margin-top:8px"><button class="btn sm danger" type="button" id="btnLimparSim">Sim, apagar</button><button class="btn sm" type="button" id="btnLimparNao">Cancelar</button></div>
       </div>
     </div>
@@ -543,7 +546,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-go]"
 window.addEventListener("hashchange", () => go(location.hash.slice(1)));
 
 /* ---------- Cálculos ---------- */
-function kmGps(){ let k=0; for(let i=1;i<S.trajeto.length;i++) k+=haversine(S.trajeto[i-1],S.trajeto[i]); return k; }
+function kmGps(){ return S.rotaFeita?.km || 0; }
 function kmOdo(){
   const odos = S.abast.map(a=>num(a.odo)).filter(x=>x>0);
   const ini = num(S.config.odoIni);
@@ -576,9 +579,9 @@ function renderInicio(){
   const t = totais();
   const kmInt = Math.floor(t.km), dec = Math.floor((t.km - kmInt)*10);
   $("#odo").innerHTML = String(kmInt).padStart(5,"0").split("").map(d=>`<span>${d}</span>`).join("") + `<span class="dec">${dec}</span><em>km</em>`;
-  $("#kmFonte").textContent = t.ko!=null ? "pelo hodômetro" : (t.kg>0 ? "pelo GPS" : "sem dados");
-  $("#kmDetalhe").textContent = t.ko!=null && t.kg>0 ? `Trajeto gravado pelo GPS: ${n1(t.kg)} km.` :
-    t.ko==null && t.kg===0 ? "Informe o hodômetro na saída (Ajustes) e a cada abastecimento, ou grave o trajeto." :
+  $("#kmFonte").textContent = t.ko!=null ? "pelo hodômetro" : (t.kg>0 ? "pelas estradas" : "sem dados");
+  $("#kmDetalhe").textContent = t.ko!=null && t.kg>0 ? `Pelas estradas, entre os pontos marcados: ${n1(t.kg)} km.` :
+    t.ko==null && t.kg===0 ? "Informe o hodômetro na saída (Ajustes) e a cada abastecimento." :
     t.ko==null ? "Para mais precisão, anote o hodômetro nos abastecimentos." : "";
   $("#totalGeral").textContent = brl(t.total);
   $("#sFuel").textContent = brl(t.fuel); $("#sHosp").textContent = brl(t.hosp); $("#sOut").textContent = brl(t.out);
@@ -607,7 +610,7 @@ function calcTrecho(){
 function todosLancamentos(){
   return [
     ...S.abast.map(a=>({...a,_t:"abast",_d:a.data||""})),
-    ...S.hosp.map(h=>({...h,_t:"hosp",_d:h.checkin||""})),
+    ...S.hosp.map(h=>({...h,_t:"hosp",_d:h.checkin ? h.checkin+"T18:00" : ""})),
     ...S.outros.map(o=>({...o,_t:"outro",_d:o.data||""}))
   ].sort((a,b)=>b._d.localeCompare(a._d));
 }
@@ -711,7 +714,6 @@ $("#fAbast").addEventListener("submit", e => {
   if(!total){ e.preventDefault(); toast("Informe os litros ou o valor total."); return; }
   const old = editId ? S.abast.find(x=>x.id===editId) : {};
   upsert("abast", {...old, id:editId||uid(), posto:$("#aPosto").value.trim(), comb:$("#aComb").value, data:$("#aData").value, preco, litros:+litros.toFixed(2), total:+total.toFixed(2), odo:$("#aOdo").value, cidade:$("#aCidade").value.trim(), cheio:$("#aCheio").checked, lat:formLoc?.lat??old?.lat??null, lng:formLoc?.lng??old?.lng??null});
-  if(formLoc) addPontoTrajeto(formLoc.lat, formLoc.lng, true);
   save(); toast("Abastecimento salvo");
 });
 $("#fHosp").addEventListener("submit", () => {
@@ -727,31 +729,45 @@ $("#fOutro").addEventListener("submit", () => {
   if($("#oGps").checked) gps().then(p=>{ const o=S.outros.find(x=>x.id===id); if(o){ o.lat=p.lat; o.lng=p.lng; persist(); } }).catch(()=>{});
 });
 
-/* ---------- Trajeto (GPS contínuo) ---------- */
-let watchId=null, wakeLock=null;
-function addPontoTrajeto(lat,lng,forcar){
-  const last = S.trajeto[S.trajeto.length-1];
-  if(!forcar && last && haversine(last,[lat,lng]) < 0.15) return false;
-  if(last && haversine(last,[lat,lng]) < 0.02) return false;
-  S.trajeto.push([+lat.toFixed(5), +lng.toFixed(5), Date.now()]);
-  return true;
+/* ---------- Caminho de ponto a ponto (sem gravar GPS) ---------- */
+// Pontos da viagem em ordem de data: onde abasteceu, dormiu e gastou. Pontos a menos de 1 km do anterior são juntados.
+function pontosViagem(){
+  const out = [];
+  todosLancamentos().filter(x=>x.lat).sort((a,b)=>a._d.localeCompare(b._d)).forEach(x => {
+    const last = out[out.length-1];
+    if(!last || haversine([last.lat,last.lng],[x.lat,x.lng]) > 1) out.push({lat:x.lat, lng:x.lng, nome:x.posto||x.nome||x.desc||x.cat||"", cidade:x.cidade||""});
+  });
+  return out;
 }
-async function toggleRec(){
-  if(watchId!==null){
-    navigator.geolocation.clearWatch(watchId); watchId=null;
-    try{ await wakeLock?.release(); }catch(e){} wakeLock=null;
-    $("#recDot").classList.remove("rec"); $("#recTxt").textContent="Gravar trajeto"; toast("Trajeto pausado"); return;
-  }
-  if(!navigator.geolocation || !window.isSecureContext){ toast("O GPS só funciona com o app aberto por https."); return; }
-  watchId = navigator.geolocation.watchPosition(p => {
-    if(p.coords.accuracy > 80) return;
-    if(addPontoTrajeto(p.coords.latitude, p.coords.longitude)){ persist(); renderInicio(); }
-  }, e => toast(e.code===1 ? "Permissão de localização negada." : "GPS instável…"), {enableHighAccuracy:true, maximumAge:5000, timeout:30000});
-  try{ wakeLock = await navigator.wakeLock?.request("screen"); }catch(e){}
-  $("#recDot").classList.add("rec"); $("#recTxt").textContent="Gravando… parar"; toast("Gravando trajeto. Deixe a tela ligada.");
+function amostrar(arr, max){ if(arr.length<=max) return arr; const o=[]; for(let i=0;i<max;i++) o.push(arr[Math.round(i*(arr.length-1)/(max-1))]); return o; }
+// Google Maps aceita até 9 paradas no meio do caminho pelo link
+function googleRotaUrl(pts){
+  if(pts.length<2) return null;
+  const p = amostrar(pts, 11), o=p[0], d=p[p.length-1], meio=p.slice(1,-1).map(x=>`${x.lat},${x.lng}`).join("|");
+  return `https://www.google.com/maps/dir/?api=1&origin=${o.lat},${o.lng}&destination=${d.lat},${d.lng}${meio?"&waypoints="+encodeURIComponent(meio):""}&travelmode=driving`;
 }
-$("#btnRec").onclick = toggleRec;
-document.addEventListener("visibilitychange", async () => { if(watchId!==null && document.visibilityState==="visible"){ try{ wakeLock = await navigator.wakeLock?.request("screen"); }catch(e){} } });
+function abrirViagemGoogle(){
+  const u = googleRotaUrl(pontosViagem());
+  if(!u){ toast("Ainda não há dois lugares marcados. Eles entram quando você lança um gasto com localização."); return; }
+  window.open(u, "_blank", "noopener");
+}
+$("#btnGoogleViagem").onclick = abrirViagemGoogle;
+$("#btnGoogleViagem2").onclick = abrirViagemGoogle;
+let calculandoFeita = false;
+async function atualizarRotaFeita(){
+  const pts = amostrar(pontosViagem(), 25);
+  const sig = pts.map(p=>p.lat+","+p.lng).join(";");
+  if(pts.length<2){ if(S.rotaFeita){ S.rotaFeita=null; persist(); } return; }
+  if(S.rotaFeita?.sig===sig || calculandoFeita) return;
+  calculandoFeita = true;
+  try{
+    const r = await tfetch(`https://router.project-osrm.org/route/v1/driving/${pts.map(p=>p.lng+","+p.lat).join(";")}?overview=full&geometries=geojson`,{},20000);
+    const j = await r.json(); const rt = j.routes[0];
+    S.rotaFeita = {sig, km:rt.distance/1000, geo:simplificar(rt.geometry.coordinates.map(c=>[+c[1].toFixed(5),+c[0].toFixed(5)]),0.3)};
+    persist(); renderInicio(); if(!$("#v-mapa").hidden) renderMapaFinal();
+  }catch(e){}
+  calculandoFeita = false;
+}
 
 /* ---------- Perto de mim ---------- */
 let mapP=null, layerP=null, filtroP="posto";
@@ -1045,13 +1061,15 @@ function renderMapaFinal(){
   const pontosEventos = todosLancamentos().filter(x=>x.lat).sort((a,b)=>a._d.localeCompare(b._d));
   (S.legs||[]).forEach(l => L.polyline(l.geo,{color:cor("--muted"),weight:3,opacity:.6,dashArray:"2 7"}).addTo(layerF));
   S.roteiro.forEach((p,i) => { L.circleMarker([p.lat,p.lng],{radius:6,color:cor("--ink"),weight:2,fillColor:cor("--surface"),fillOpacity:1}).addTo(layerF).bindPopup(`<b>${i+1}. ${esc(p.nome)}</b>`); pts.push([p.lat,p.lng]); });
-  if(S.trajeto.length>1){ const line=S.trajeto.map(p=>[p[0],p[1]]); L.polyline(line,{color:cor("--sun"),weight:5,opacity:.9}).addTo(layerF); pts.push(...line); }
-  else if(pontosEventos.length>1){ const line=pontosEventos.map(x=>[x.lat,x.lng]); L.polyline(line,{color:cor("--sun"),weight:4,dashArray:"8 8"}).addTo(layerF); }
+  const pv = pontosViagem();
+  if(S.rotaFeita?.geo?.length>1){ L.polyline(S.rotaFeita.geo,{color:cor("--sun"),weight:5,opacity:.9}).addTo(layerF); pts.push(...S.rotaFeita.geo); }
+  else if(pv.length>1){ L.polyline(pv.map(x=>[x.lat,x.lng]),{color:cor("--sun"),weight:4,dashArray:"8 8"}).addTo(layerF); }
+  atualizarRotaFeita();
   pontosEventos.forEach(x=>{
     const c = x._t==="abast" ? cor("--sea") : x._t==="hosp" ? cor("--coral") : cor("--leaf");
     const l = x._t==="abast" ? "C" : x._t==="hosp" ? "H" : "$";
     const titulo = x._t==="abast" ? (x.posto||"Abastecimento")+` — ${brl(x.total)} (${n1(x.litros)} l a ${brl(x.preco)})` : x._t==="hosp" ? `${x.nome} — ${brl(x.valor)}` : `${x.desc||x.cat} — ${brl(x.valor)}`;
-    L.marker([x.lat,x.lng],{icon:pinIcon(c,l)}).addTo(layerF).bindPopup(`<b>${esc(titulo)}</b><br>${esc(x.cidade||"")} ${fmtData(x._d)}`);
+    L.marker([x.lat,x.lng],{icon:pinIcon(c,l)}).addTo(layerF).bindPopup(`<b>${esc(titulo)}</b><br>${esc(x.cidade||"")} ${fmtData(x._t==="hosp" ? x.checkin : x._d)}`);
     pts.push([x.lat,x.lng]);
   });
   if(pts.length>1) mapF.fitBounds(pts,{padding:[30,30]}); else if(pts.length===1) mapF.setView(pts[0],12);
@@ -1068,6 +1086,7 @@ function renderAjustes(){
   const c=S.config;
   $("#cfgComb").innerHTML = COMBS.map(x=>`<option>${x}</option>`).join("");
   $("#cfgVeic").value=c.veiculo; $("#cfgCons").value=c.consumo; $("#cfgTanque").value=c.tanque; $("#cfgPessoas").value=c.pessoas;
+  mostrarUltimaCopia();
   $("#cfgComb").value=c.comb; $("#cfgOdo").value=c.odoIni; $("#cfgIni").value=c.ini; $("#cfgFim").value=c.fim; $("#cfgOrig").value=c.origem; $("#cfgOrc").value=c.orcamento; $("#cfgPreco").value=c.precoRef||"";
 }
 $("#fCfg").addEventListener("submit", e => {
@@ -1076,7 +1095,18 @@ $("#fCfg").addEventListener("submit", e => {
   $("#cCons").value=""; save(); toast("Ajustes salvos");
 });
 function baixar(nome, conteudo, tipo){ const b=new Blob([conteudo],{type:tipo}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=nome; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500); }
-$("#btnExport").onclick = () => baixar(`minha-rota-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(S,null,1), "application/json");
+function mostrarUltimaCopia(){ const d = S.ultimaCopia; $("#ultimaCopia").textContent = d ? `Última cópia: ${new Date(d).toLocaleString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}` : "Você ainda não guardou nenhuma cópia."; }
+// No celular abre a lista de compartilhar (WhatsApp, Drive, e-mail…); no computador baixa o arquivo
+$("#btnExport").onclick = async () => {
+  S.ultimaCopia = new Date().toISOString();
+  const nome = `minha-rota-copia-${new Date().toISOString().slice(0,10)}.json`;
+  const arq = new File([JSON.stringify(S)], nome, {type:"application/json"});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[arq]})){ await navigator.share({files:[arq], title:"Cópia do Minha Rota", text:"Cópia de segurança do Minha Rota. Guarde este arquivo."}); }
+    else baixar(nome, JSON.stringify(S), "application/json");
+    persist(); mostrarUltimaCopia(); toast("Cópia pronta");
+  }catch(e){ if(e.name!=="AbortError"){ baixar(nome, JSON.stringify(S), "application/json"); persist(); mostrarUltimaCopia(); } }
+};
 $("#btnCsv").onclick = () => {
   const linhas = [["tipo","data","nome","cidade","detalhe","litros","preco_litro","valor","hodometro","lat","lng"]];
   todosLancamentos().reverse().forEach(x=>{
@@ -1088,8 +1118,8 @@ $("#btnCsv").onclick = () => {
 };
 $("#fileImport").onchange = async e => {
   const f = e.target.files[0]; if(!f) return;
-  try{ const j = JSON.parse(await f.text()); if(!j.abast || !j.config) throw 0; const d=def(); S={...d,...j,config:{...d.config,...j.config}}; save(); renderAjustes(); toast("Backup restaurado"); }
-  catch(_){ toast("Esse arquivo não é um backup do Minha Rota."); }
+  try{ const j = JSON.parse(await f.text()); if(!j.abast || !j.config) throw 0; const d=def(); S={...d,...j,config:{...d.config,...j.config}}; save(); renderAjustes(); toast("Cópia recuperada. Seus dados voltaram."); }
+  catch(_){ toast("Esse arquivo não é uma cópia do Minha Rota."); }
   e.target.value="";
 };
 $("#btnLimpar").onclick = () => $("#confirmLimpar").hidden=false;

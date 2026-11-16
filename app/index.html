@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Minha Rota</title>
+<meta name="theme-color" content="#0E6E8C">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-96.png" type="image/png">
+<link rel="apple-touch-icon" href="icone-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Minha Rota">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: app de uma coluna (máx. 560px), cabeçalho fixo com faixa de frevo, abas na base. */
+:root{
+  --bg:#EEF3F4; --surface:#FFFFFF; --surface2:#F6F9FA; --ink:#10222B; --muted:#5B6E77; --line:#D8E2E5;
+  --sea:#0E6E8C; --sea-ink:#FFFFFF; --sun:#F2B33D; --coral:#D9534A; --leaf:#2E8B57;
+  --font-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Inter", "Segoe UI", system-ui, sans-serif;
+  --font-num:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  --r:14px; --shadow:0 1px 2px rgba(16,34,43,.06), 0 6px 20px rgba(16,34,43,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0B171D; --surface:#12232B; --surface2:#0F1E25; --ink:#E6EEF1; --muted:#8FA3AC; --line:#22363F;
+    --sea:#3BB0D0; --sea-ink:#06232D; --sun:#F5C35C; --coral:#EF7A6F; --leaf:#5CC28A;
+    --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark; }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-body);-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+header.top{position:sticky;top:0;z-index:500;background:var(--bg);padding-top:env(safe-area-inset-top,0px)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px 10px}
+header.top h1{font-size:22px;font-weight:800}
+header.top h1 small{display:block;font:500 12px/1.2 var(--font-body);color:var(--muted);letter-spacing:.02em}
+.frevo{height:4px;display:grid;grid-template-columns:repeat(4,1fr)}
+.frevo i:nth-child(1){background:var(--coral)}.frevo i:nth-child(2){background:var(--sun)}
+.frevo i:nth-child(3){background:var(--leaf)}.frevo i:nth-child(4){background:var(--sea)}
+.gpsPill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:5px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);max-width:52%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--leaf);box-shadow:0 0 0 3px color-mix(in srgb,var(--leaf) 25%,transparent)}
+.dot.rec{background:var(--coral);animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.35}}
+
+main{padding-block:14px calc(96px + env(safe-area-inset-bottom,0px))}
+.view{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
+.card h2{font-size:17px;font-weight:600;margin-bottom:10px}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px}
+
+/* Hodômetro */
+.odo{display:flex;gap:4px;margin:6px 0 4px}
+.odo span{font:700 28px/1 var(--font-num);background:var(--ink);color:var(--bg);padding:8px 6px;border-radius:6px;min-width:28px;text-align:center}
+.odo span.dec{background:var(--coral);color:#fff}
+.odo em{font:600 13px var(--font-body);align-self:flex-end;color:var(--muted);margin-left:6px;font-style:normal}
+
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat b{display:block;font:700 19px/1.2 var(--font-num);margin-top:2px}
+.stat .k-fuel{color:var(--sea)} .stat .k-hosp{color:var(--coral)} .stat .k-out{color:var(--leaf)}
+
+.bar{height:10px;border-radius:99px;background:var(--surface2);border:1px solid var(--line);overflow:hidden;display:flex}
+.bar i{height:100%}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 14px;font-weight:600;cursor:pointer;text-decoration:none;color:var(--ink);min-height:44px}
+.btn:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid color-mix(in srgb,var(--sea) 55%,transparent);outline-offset:2px}
+.btn.primary{background:var(--sea);border-color:var(--sea);color:var(--sea-ink)}
+.btn.danger{color:var(--coral);border-color:color-mix(in srgb,var(--coral) 40%,var(--line))}
+.btn.sm{padding:7px 10px;min-height:36px;font-size:13px;border-radius:10px}
+.btn.block{width:100%}
+.btn svg{width:18px;height:18px;flex:none}
+.btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:8px 6px;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.ico{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none}
+.ico svg{width:20px;height:20px}
+.ico.fuel{background:color-mix(in srgb,var(--sea) 15%,transparent);color:var(--sea)}
+.ico.hosp{background:color-mix(in srgb,var(--coral) 15%,transparent);color:var(--coral)}
+.ico.out{background:color-mix(in srgb,var(--leaf) 15%,transparent);color:var(--leaf)}
+.item .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .s{font-size:12.5px;color:var(--muted)}
+.item .v{text-align:right;font:700 15px var(--font-num)}
+.item .v small{display:block;font:500 11.5px var(--font-body);color:var(--muted)}
+.item .acts{grid-column:2 / -1;display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--surface2);border:1px solid var(--line);color:var(--muted)}
+.chip.good{color:var(--leaf);border-color:color-mix(in srgb,var(--leaf) 40%,var(--line))}
+.chip.warn{color:var(--coral);border-color:color-mix(in srgb,var(--coral) 40%,var(--line))}
+
+.empty{text-align:center;padding:22px 8px;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-family:var(--font-display);font-size:17px;margin-bottom:4px}
+
+.map{height:340px;border-radius:12px;overflow:hidden;border:1px solid var(--line);z-index:0}
+.map.tall{height:min(62vh,520px)}
+.leaflet-container{font:inherit;background:var(--surface2)}
+.pin{width:30px;height:30px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);display:grid;place-items:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.pin span{transform:rotate(45deg);color:#fff;font:700 13px var(--font-body)}
+.me{width:18px;height:18px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 6px rgba(26,115,232,.25)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* Formulários */
+dialog{border:0;padding:0;border-radius:18px 18px 0 0;width:100%;max-width:560px;margin:auto auto 0;background:var(--surface);color:var(--ink);max-height:92vh}
+dialog::backdrop{background:rgba(6,20,26,.55)}
+dialog form{padding:18px max(16px,env(safe-area-inset-left,0px)) calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:12.5px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--surface2);border-radius:10px;padding:11px 12px;min-height:44px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.check{display:flex;gap:10px;align-items:center;font-weight:500}
+.check input{width:20px;height:20px;accent-color:var(--sea)}
+.locbox{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--surface2);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:600;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .wrap{display:grid;grid-template-columns:repeat(6,1fr);padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(4px,env(safe-area-inset-right,0px))}
+.tab{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 10px;font-size:10.5px;font-weight:600;color:var(--muted);cursor:pointer;min-width:0}
+.waze{background:#33CCFF;border-color:#33CCFF;color:#06232D}
+.stopNum{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:700 15px var(--font-num);color:#fff;background:var(--sea);flex:none}
+.stopNum.dorme{background:var(--coral)}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--sea)}
+
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:1000;max-width:calc(100% - 32px);text-align:center}
+.note{font-size:12.5px;color:var(--muted);line-height:1.45}
+.hint{background:color-mix(in srgb,var(--sun) 16%,var(--surface));border:1px solid color-mix(in srgb,var(--sun) 45%,var(--line));border-radius:12px;padding:10px 12px;font-size:13px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>Minha Rota<small id="subTitle">Diário de estrada</small></h1>
+    <button class="gpsPill" id="gpsPill" type="button" title="Atualizar localização"><span class="dot" id="gpsDot"></span><span id="gpsText">Localizar</span></button>
+  </div>
+  <div class="frevo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+</header>
+
+<main class="wrap">
+  <!-- INÍCIO -->
+  <section class="view" id="v-inicio">
+    <div class="card" id="instalarBox" hidden style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <img src="icone-96.png" alt="" width="56" height="56" style="border-radius:14px;flex:none">
+      <div style="flex:1 1 180px;min-width:0">
+        <h2 style="margin:0 0 2px">Instale no celular</h2>
+        <p class="note" id="instalarTxt" style="margin:0">Fica com o ícone na tela, igual a um aplicativo.</p>
+      </div>
+      <div class="row" style="flex:1 1 100%">
+        <button class="btn primary" type="button" id="btnInstalar" style="flex:1">Instalar Minha Rota</button>
+        <button class="btn" type="button" id="btnInstalarDepois">Agora não</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="spread"><span class="label">Quilometragem da viagem</span><span class="chip" id="kmFonte">—</span></div>
+      <div class="odo" id="odo"></div>
+      <div class="note" id="kmDetalhe"></div>
+    </div>
+
+    <div class="card">
+      <div class="spread"><h2>Gastos</h2><span class="num" id="totalGeral" style="font-weight:700;font-size:20px"></span></div>
+      <div class="bar" id="barGastos" aria-hidden="true"></div>
+      <div class="stats" style="margin-top:12px">
+        <div class="stat"><span class="label">Combustível</span><b class="k-fuel" id="sFuel"></b></div>
+        <div class="stat"><span class="label">Hospedagem</span><b class="k-hosp" id="sHosp"></b></div>
+        <div class="stat"><span class="label">Outros</span><b class="k-out" id="sOut"></b></div>
+        <div class="stat"><span class="label">Custo por km</span><b id="sCkm"></b></div>
+        <div class="stat"><span class="label">Consumo real</span><b id="sCons"></b></div>
+        <div class="stat"><span class="label">Preço médio / litro</span><b id="sPm"></b></div>
+      </div>
+      <div id="orcBox" style="margin-top:12px" hidden>
+        <div class="spread" style="font-size:13px"><span>Orçamento</span><span class="num" id="orcTxt"></span></div>
+        <div class="bar" style="margin-top:6px"><i id="orcBar" style="background:var(--sea)"></i></div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn primary" type="button" data-add="abast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16M3 21h13M15 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3M7 8h5"/></svg>Abasteci</button>
+      <button class="btn" type="button" data-add="hosp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20V7M21 20v-6a3 3 0 0 0-3-3H10v6M3 17h18M7 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>Hospedagem</button>
+      <button class="btn" type="button" data-add="outro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Outro gasto</button>
+      <button class="btn" type="button" id="btnRec"><span class="dot" id="recDot"></span><span id="recTxt">Gravar trajeto</span></button>
+    </div>
+    <p class="note" id="recNote" style="margin:-4px 2px 0">O trajeto grava pelo GPS enquanto o app está aberto na tela. Ele desenha o caminho no mapa final.</p>
+
+    <div class="card">
+      <h2>Quanto vai custar o próximo trecho?</h2>
+      <div class="grid3">
+        <div class="field"><label for="cKm">Distância (km)</label><input id="cKm" type="number" inputmode="decimal" placeholder="ex.: 120"></div>
+        <div class="field"><label for="cCons">Km por litro</label><input id="cCons" type="number" inputmode="decimal" step="0.1"></div>
+        <div class="field"><label for="cPreco">R$ / litro</label><input id="cPreco" type="number" inputmode="decimal" step="0.01"></div>
+      </div>
+      <p class="num" id="cRes" style="margin:10px 0 0;font-weight:700"></p>
+    </div>
+
+    <div class="card">
+      <div class="spread"><h2>Últimos lançamentos</h2><button class="btn sm" type="button" data-go="gastos">Ver tudo</button></div>
+      <div class="list" id="ultimos"></div>
+    </div>
+  </section>
+
+  <!-- ROTEIRO -->
+  <section class="view" id="v-roteiro" hidden>
+    <div class="card">
+      <h2>Cidades da viagem</h2>
+      <p class="note" style="margin-top:-4px">Coloque na ordem: primeiro a cidade de onde você sai, depois cada cidade onde vai parar. Diga quantas noites vai dormir em cada uma.</p>
+      <form id="fParada" class="row" style="align-items:flex-end;margin-bottom:6px">
+        <div class="field" style="flex:1 1 170px"><label for="rCidade">Cidade</label><input id="rCidade" placeholder="ex.: Porto de Galinhas" required autocomplete="off"></div>
+        <div class="field" style="width:84px"><label for="rNoites">Noites</label><input id="rNoites" type="number" min="0" inputmode="numeric" value="0"></div>
+        <button class="btn primary" type="submit" id="rAdd">Adicionar</button>
+      </form>
+      <div class="list" id="rList"></div>
+    </div>
+    <div class="card">
+      <div class="spread" style="margin-bottom:10px"><h2 style="margin:0">Rota planejada</h2><button class="btn sm" type="button" id="btnCalcRota">Recalcular</button></div>
+      <div class="map" id="mapRoteiro"></div>
+      <p class="note" id="rStatus" style="margin:8px 0 0"></p>
+      <div class="stats" id="rStats" style="margin-top:10px"></div>
+      <div class="btns" id="rLinks" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>Trechos</h2>
+      <div class="list" id="rTrechos"></div>
+    </div>
+    <div class="card" id="rPostosCard" hidden>
+      <div class="spread"><h2 id="rPostosT" style="margin:0">Postos no caminho</h2><span class="chip" id="rPostosN"></span></div>
+      <p class="note" id="rPostosNota" style="margin:6px 0 4px"></p>
+      <div class="list" id="rPostos"></div>
+    </div>
+  </section>
+
+  <!-- PERTO DE MIM -->
+  <section class="view" id="v-perto" hidden>
+    <div class="card">
+      <div class="spread" style="margin-bottom:10px">
+        <div><span class="label">Você está em</span><h2 id="pCidade" style="margin:2px 0 0">—</h2></div>
+        <button class="btn sm primary" type="button" id="btnBuscar">Buscar aqui</button>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="seg" id="segPerto" style="flex:1">
+          <button type="button" data-f="posto" aria-pressed="true">Postos</button>
+          <button type="button" data-f="hosp" aria-pressed="false">Hospedagem</button>
+        </div>
+        <select id="raio" aria-label="Raio de busca" class="btn sm" style="font-weight:600">
+          <option value="2000">2 km</option><option value="5000" selected>5 km</option><option value="10000">10 km</option><option value="20000">20 km</option>
+        </select>
+      </div>
+      <div class="map" id="mapPerto"></div>
+      <p class="note" id="pStatus" style="margin:8px 0 0">Toque em “Buscar aqui” para achar postos e hospedagens ao redor pelo GPS.</p>
+    </div>
+
+    <div class="card">
+      <div class="spread"><h2 style="margin:0">Trânsito agora (Waze)</h2><button class="btn sm" type="button" id="btnWazeMapa">Mostrar</button></div>
+      <iframe id="wazeFrame" title="Mapa ao vivo do Waze" hidden style="width:100%;height:360px;border:1px solid var(--line);border-radius:12px;margin-top:10px" loading="lazy" allow="geolocation"></iframe>
+      <p class="note" style="margin:8px 0 0">Mapa ao vivo do Waze com trânsito, acidentes e alertas da região. Para navegar, use os botões “Waze”, que abrem o seu aplicativo.</p>
+    </div>
+
+    <div class="card" id="extLinks">
+      <h2>Abrir nos apps</h2>
+      <div class="btns" id="extBtns"></div>
+      <p class="note" style="margin:10px 0 0">Booking e Airbnb abrem já filtrados pela cidade onde você está e pelas datas da viagem (Ajustes). Lá você usa a sua conta normalmente.</p>
+    </div>
+
+    <div class="card" id="precosRegiao" hidden>
+      <h2>Preços que você pagou nesta região</h2>
+      <div class="list" id="precosList"></div>
+    </div>
+
+    <div class="card">
+      <div class="spread"><h2 id="pListTitle">Postos próximos</h2><span class="chip" id="pCount">0</span></div>
+      <div class="list" id="pList"><div class="empty"><b>Nada buscado ainda</b>Use “Buscar aqui” para listar pelo GPS.</div></div>
+    </div>
+  </section>
+
+  <!-- GASTOS -->
+  <section class="view" id="v-gastos" hidden>
+    <div class="seg" id="segGastos">
+      <button type="button" data-g="abast" aria-pressed="true">Combustível</button>
+      <button type="button" data-g="hosp" aria-pressed="false">Hospedagem</button>
+      <button type="button" data-g="outro" aria-pressed="false">Outros</button>
+    </div>
+    <div class="card">
+      <div class="spread"><h2 id="gTitle">Abastecimentos</h2><button class="btn sm primary" type="button" id="gAdd">+ Adicionar</button></div>
+      <div class="note" id="gResumo" style="margin:-4px 0 6px"></div>
+      <div class="list" id="gList"></div>
+    </div>
+  </section>
+
+  <!-- MAPA FINAL -->
+  <section class="view" id="v-mapa" hidden>
+    <div class="card">
+      <div class="spread" style="margin-bottom:10px"><h2>Mapa da viagem</h2><button class="btn sm" type="button" id="btnCopiar">Copiar resumo</button></div>
+      <div class="map tall" id="mapFinal"></div>
+      <div class="legend" style="margin-top:10px">
+        <span><i style="background:var(--sea)"></i>Abastecimento</span>
+        <span><i style="background:var(--coral)"></i>Hospedagem</span>
+        <span><i style="background:var(--leaf)"></i>Outros</span>
+        <span><i style="background:var(--sun)"></i>Trajeto feito</span>
+        <span><i style="background:var(--muted)"></i>Rota planejada</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Resumo final</h2>
+      <div class="stats" id="fStats"></div>
+    </div>
+    <div class="card">
+      <h2>Gastos por cidade</h2>
+      <div class="list" id="porCidade"></div>
+    </div>
+  </section>
+
+  <!-- AJUSTES -->
+  <section class="view" id="v-ajustes" hidden>
+    <form class="card" id="fCfg" style="display:flex;flex-direction:column;gap:12px">
+      <h2 style="margin:0">Veículo e viagem</h2>
+      <div class="field"><label for="cfgVeic">Veículo</label><input id="cfgVeic" placeholder="ex.: Onix 1.0 2022"></div>
+      <div class="grid3">
+        <div class="field"><label for="cfgCons">Km/l (referência)</label><input id="cfgCons" type="number" step="0.1" inputmode="decimal"></div>
+        <div class="field"><label for="cfgTanque">Tanque (l)</label><input id="cfgTanque" type="number" inputmode="decimal"></div>
+        <div class="field"><label for="cfgPessoas">Pessoas</label><input id="cfgPessoas" type="number" inputmode="numeric" min="1"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="cfgComb">Combustível padrão</label><select id="cfgComb"></select></div>
+        <div class="field"><label for="cfgOdo">Hodômetro na saída</label><input id="cfgOdo" type="number" inputmode="numeric" placeholder="km"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="cfgIni">Início da viagem</label><input id="cfgIni" type="date"></div>
+        <div class="field"><label for="cfgFim">Fim da viagem</label><input id="cfgFim" type="date"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="cfgOrig">Saindo de</label><input id="cfgOrig" placeholder="cidade de origem"></div>
+        <div class="field"><label for="cfgOrc">Orçamento (R$)</label><input id="cfgOrc" type="number" inputmode="decimal"></div>
+      </div>
+      <div class="field"><label for="cfgPreco">Preço estimado do litro (para planejar)</label><input id="cfgPreco" type="number" step="0.01" inputmode="decimal" placeholder="ex.: 6,29"></div>
+      <button class="btn primary" type="submit">Salvar ajustes</button>
+    </form>
+
+    <div class="card">
+      <h2>Seus dados</h2>
+      <p class="note" style="margin-top:0">Tudo fica guardado neste celular. Faça um backup de vez em quando para não perder nada se limpar o navegador.</p>
+      <div class="btns">
+        <button class="btn" type="button" id="btnExport">Baixar backup</button>
+        <label class="btn" for="fileImport" style="cursor:pointer">Restaurar backup</label>
+        <button class="btn" type="button" id="btnCsv">Planilha (CSV)</button>
+        <button class="btn" type="button" id="btnExemplo">Carregar exemplo</button>
+      </div>
+      <input type="file" id="fileImport" accept="application/json,.json" hidden>
+      <button class="btn danger block" type="button" id="btnLimpar" style="margin-top:8px">Apagar todos os dados</button>
+      <div id="confirmLimpar" class="hint" style="margin-top:8px" hidden>
+        Isso apaga todos os lançamentos e o trajeto deste aparelho.
+        <div class="row" style="margin-top:8px"><button class="btn sm danger" type="button" id="btnLimparSim">Sim, apagar</button><button class="btn sm" type="button" id="btnLimparNao">Cancelar</button></div>
+      </div>
+    </div>
+    <p class="note" style="text-align:center">Mapas © colaboradores OpenStreetMap. Preço de combustível é o que você registra; para a média oficial, veja a pesquisa semanal da ANP.</p>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Seções">
+  <div class="wrap">
+    <button class="tab" type="button" data-go="inicio" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</button>
+    <button class="tab" type="button" data-go="roteiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H16"/></svg>Roteiro</button>
+    <button class="tab" type="button" data-go="perto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/></svg>Perto</button>
+    <button class="tab" type="button" data-go="gastos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>Gastos</button>
+    <button class="tab" type="button" data-go="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mapa</button>
+    <button class="tab" type="button" data-go="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>Ajustes</button>
+  </div>
+</nav>
+
+<!-- Formulário: abastecimento -->
+<dialog id="dAbast">
+  <form method="dialog" id="fAbast">
+    <div class="spread"><h2 id="dAbastT">Novo abastecimento</h2><button class="btn sm" type="button" data-close>Fechar</button></div>
+    <div class="locbox"><span id="aLoc">Pegando localização…</span><button class="btn sm" type="button" id="aGps">GPS</button></div>
+    <div class="field"><label for="aPosto">Posto</label><input id="aPosto" list="dlPostos" placeholder="nome do posto" autocomplete="off"><datalist id="dlPostos"></datalist></div>
+    <div class="grid2">
+      <div class="field"><label for="aComb">Combustível</label><select id="aComb"></select></div>
+      <div class="field"><label for="aData">Data e hora</label><input id="aData" type="datetime-local"></div>
+    </div>
+    <div class="grid3">
+      <div class="field"><label for="aPreco">R$ / litro</label><input id="aPreco" type="number" step="0.001" inputmode="decimal" required></div>
+      <div class="field"><label for="aLitros">Litros</label><input id="aLitros" type="number" step="0.01" inputmode="decimal"></div>
+      <div class="field"><label for="aTotal">Total R$</label><input id="aTotal" type="number" step="0.01" inputmode="decimal"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="aOdo">Hodômetro (km)</label><input id="aOdo" type="number" inputmode="numeric" placeholder="opcional"></div>
+      <div class="field"><label for="aCidade">Cidade</label><input id="aCidade"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="aCheio" checked> Completei o tanque</label>
+    <p class="note" style="margin:0">Com o hodômetro e o tanque cheio, o app calcula o seu consumo real (km/l).</p>
+    <button class="btn primary" type="submit" id="aSalvar">Salvar abastecimento</button>
+  </form>
+</dialog>
+
+<!-- Formulário: hospedagem -->
+<dialog id="dHosp">
+  <form method="dialog" id="fHosp">
+    <div class="spread"><h2 id="dHospT">Nova hospedagem</h2><button class="btn sm" type="button" data-close>Fechar</button></div>
+    <div class="locbox"><span id="hLoc">Sem localização</span><button class="btn sm" type="button" id="hGps">Estou aqui</button></div>
+    <div class="field"><label for="hNome">Nome do lugar</label><input id="hNome" list="dlHosp" required autocomplete="off"><datalist id="dlHosp"></datalist></div>
+    <div class="grid2">
+      <div class="field"><label for="hPlat">Reservado por</label><select id="hPlat"><option>Booking</option><option>Airbnb</option><option>Direto</option><option>Outro</option></select></div>
+      <div class="field"><label for="hCidade">Cidade</label><input id="hCidade"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="hIn">Check-in</label><input id="hIn" type="date"></div>
+      <div class="field"><label for="hOut">Check-out</label><input id="hOut" type="date"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="hValor">Valor total R$</label><input id="hValor" type="number" step="0.01" inputmode="decimal" required></div>
+      <div class="field"><label for="hLink">Link da reserva</label><input id="hLink" type="url" placeholder="https://"></div>
+    </div>
+    <div class="field"><label for="hObs">Observações</label><textarea id="hObs" rows="2" placeholder="código da reserva, café incluso…"></textarea></div>
+    <button class="btn primary" type="submit">Salvar hospedagem</button>
+  </form>
+</dialog>
+
+<!-- Formulário: outro gasto -->
+<dialog id="dOutro">
+  <form method="dialog" id="fOutro">
+    <div class="spread"><h2 id="dOutroT">Outro gasto</h2><button class="btn sm" type="button" data-close>Fechar</button></div>
+    <div class="grid2">
+      <div class="field"><label for="oCat">Tipo</label><select id="oCat"><option>Pedágio</option><option>Alimentação</option><option>Passeio</option><option>Estacionamento</option><option>Manutenção</option><option>Outro</option></select></div>
+      <div class="field"><label for="oValor">Valor R$</label><input id="oValor" type="number" step="0.01" inputmode="decimal" required></div>
+    </div>
+    <div class="field"><label for="oDesc">Descrição</label><input id="oDesc" placeholder="ex.: almoço em Gravatá"></div>
+    <div class="grid2">
+      <div class="field"><label for="oData">Data</label><input id="oData" type="datetime-local"></div>
+      <div class="field"><label for="oCidade">Cidade</label><input id="oCidade"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="oGps" checked> Marcar no mapa onde estou agora</label>
+    <button class="btn primary" type="submit">Salvar gasto</button>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+/* ---------- Estado ---------- */
+const KEY = "rotaPE.v1";
+const COMBS = ["Gasolina comum","Gasolina aditivada","Etanol","Diesel S10","Diesel comum","GNV"];
+const def = () => ({ config:{veiculo:"",consumo:12,tanque:50,pessoas:2,comb:"Gasolina comum",odoIni:"",ini:"",fim:"",origem:"",orcamento:"",precoRef:""}, abast:[], hosp:[], outros:[], trajeto:[], roteiro:[], legs:[] });
+let S = load();
+function load(){ try{ const j = JSON.parse(localStorage.getItem(KEY)); if(j){ const d=def(); return {...d, ...j, config:{...d.config, ...(j.config||{})}}; } }catch(e){} return def(); }
+function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast("Não consegui salvar neste aparelho"); } }
+function save(){ persist(); renderAll(); }
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const brl = v => (Number(v)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const n1 = v => (Number(v)||0).toLocaleString("pt-BR",{maximumFractionDigits:1});
+const n2 = v => (Number(v)||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = v => { const x = parseFloat(String(v).replace(",", ".")); return isFinite(x) ? x : 0; };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = x => String(x).padStart(2,"0");
+const localDT = (d=new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmtData = s => { if(!s) return ""; const d = new Date(s.length===10 ? s+"T12:00" : s); return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}) + (s.length>10 ? " · "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : ""); };
+function haversine(a,b){ const R=6371, r=x=>x*Math.PI/180; const dLat=r(b[0]-a[0]), dLng=r(b[1]-a[1]); const h=Math.sin(dLat/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+function noites(i,o){ if(!i||!o) return 0; return Math.max(0, Math.round((new Date(o+"T12:00")-new Date(i+"T12:00"))/864e5)); }
+let toastT; function toast(msg){ let t=$(".toast"); if(!t){ t=document.createElement("div"); t.className="toast"; t.setAttribute("role","status"); document.body.appendChild(t);} t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true, 2600); }
+
+const ICON = {
+  fuel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16M3 21h13M15 9h2a2 2 0 0 1 2 2v5a1.5 1.5 0 0 0 3 0V8l-3-3M7 8h5"/></svg>',
+  hosp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20V7M21 20v-6a3 3 0 0 0-3-3H10v6M3 17h18M7 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>',
+  out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>'
+};
+
+/* ---------- GPS e cidade ---------- */
+let here = null; // {lat,lng,acc,cidade}
+const geoCache = {};
+function gps(){
+  return new Promise((res,rej)=>{
+    if(!navigator.geolocation) return rej(new Error("Este navegador não tem GPS."));
+    if(!window.isSecureContext) return rej(new Error("O GPS só funciona quando o app é aberto por https."));
+    navigator.geolocation.getCurrentPosition(
+      p => res({lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy}),
+      e => rej(new Error(e.code===1 ? "Permissão de localização negada. Libere nas configurações do navegador." : "Não consegui pegar o GPS agora.")),
+      {enableHighAccuracy:true, timeout:20000, maximumAge:30000});
+  });
+}
+async function cidadeDe(lat,lng){
+  const k = lat.toFixed(2)+","+lng.toFixed(2);
+  if(geoCache[k]) return geoCache[k];
+  try{
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=pt-BR&lat=${lat}&lon=${lng}`);
+    const j = await r.json(); const a = j.address||{};
+    const c = a.city || a.town || a.village || a.municipality || a.county || "";
+    const uf = (a["ISO3166-2-lvl4"]||"").replace("BR-","");
+    return geoCache[k] = {cidade:c, uf};
+  }catch(e){ return {cidade:"", uf:""}; }
+}
+async function localizar(silencioso){
+  $("#gpsText").textContent = "Localizando…";
+  try{
+    const p = await gps();
+    const g = await cidadeDe(p.lat,p.lng);
+    here = {...p, cidade:g.cidade, uf:g.uf};
+    $("#gpsDot").classList.add("on");
+    $("#gpsText").textContent = here.cidade ? `${here.cidade}${here.uf?" · "+here.uf:""}` : `${p.lat.toFixed(3)}, ${p.lng.toFixed(3)}`;
+    renderPertoHeader();
+    return here;
+  }catch(e){
+    $("#gpsDot").classList.remove("on");
+    $("#gpsText").textContent = "Sem GPS";
+    if(!silencioso) toast(e.message);
+    throw e;
+  }
+}
+$("#gpsPill").onclick = () => localizar(false).catch(()=>{});
+
+/* ---------- Navegação ---------- */
+const VIEWS = ["inicio","roteiro","perto","gastos","mapa","ajustes"];
+function go(v){
+  if(!VIEWS.includes(v)) v="inicio";
+  VIEWS.forEach(x => $("#v-"+x).hidden = x!==v);
+  $$(".tab").forEach(t => t.setAttribute("aria-current", t.dataset.go===v ? "page" : "false"));
+  if(location.hash !== "#"+v) history.replaceState(null,"","#"+v);
+  window.scrollTo(0,0);
+  if(v==="perto") initPerto();
+  if(v==="mapa") renderMapaFinal();
+  if(v==="roteiro") renderRoteiro();
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if(b) go(b.dataset.go); });
+window.addEventListener("hashchange", () => go(location.hash.slice(1)));
+
+/* ---------- Cálculos ---------- */
+function kmGps(){ let k=0; for(let i=1;i<S.trajeto.length;i++) k+=haversine(S.trajeto[i-1],S.trajeto[i]); return k; }
+function kmOdo(){
+  const odos = S.abast.map(a=>num(a.odo)).filter(x=>x>0);
+  const ini = num(S.config.odoIni);
+  if(ini>0 && odos.length) return Math.max(0, Math.max(...odos)-ini);
+  if(odos.length>=2) return Math.max(...odos)-Math.min(...odos);
+  return null;
+}
+function consumoReal(){
+  const f = S.abast.filter(a=>num(a.odo)>0).sort((a,b)=>num(a.odo)-num(b.odo));
+  let km=0, l=0, prev=null, acc=0;
+  for(const a of f){
+    if(prev!==null){ acc += num(a.litros); if(a.cheio){ km += num(a.odo)-prev; l += acc; prev=num(a.odo); acc=0; } }
+    else if(a.cheio){ prev = num(a.odo); }
+  }
+  return l>0 && km>0 ? km/l : null;
+}
+function totais(){
+  const fuel = S.abast.reduce((s,a)=>s+num(a.total),0);
+  const litros = S.abast.reduce((s,a)=>s+num(a.litros),0);
+  const hosp = S.hosp.reduce((s,h)=>s+num(h.valor),0);
+  const out = S.outros.reduce((s,o)=>s+num(o.valor),0);
+  const ko = kmOdo(), kg = kmGps();
+  const km = ko ?? (kg>0 ? kg : 0);
+  return {fuel, litros, hosp, out, total:fuel+hosp+out, km, ko, kg, pm: litros>0 ? fuel/litros : null, cons: consumoReal(), noites: S.hosp.reduce((s,h)=>s+noites(h.checkin,h.checkout),0)};
+}
+function ultimoPreco(){ const a = [...S.abast].sort((x,y)=>(y.data||"").localeCompare(x.data||""))[0]; return a ? num(a.preco) : null; }
+
+/* ---------- Início ---------- */
+function renderInicio(){
+  const t = totais();
+  const kmInt = Math.floor(t.km), dec = Math.floor((t.km - kmInt)*10);
+  $("#odo").innerHTML = String(kmInt).padStart(5,"0").split("").map(d=>`<span>${d}</span>`).join("") + `<span class="dec">${dec}</span><em>km</em>`;
+  $("#kmFonte").textContent = t.ko!=null ? "pelo hodômetro" : (t.kg>0 ? "pelo GPS" : "sem dados");
+  $("#kmDetalhe").textContent = t.ko!=null && t.kg>0 ? `Trajeto gravado pelo GPS: ${n1(t.kg)} km.` :
+    t.ko==null && t.kg===0 ? "Informe o hodômetro na saída (Ajustes) e a cada abastecimento, ou grave o trajeto." :
+    t.ko==null ? "Para mais precisão, anote o hodômetro nos abastecimentos." : "";
+  $("#totalGeral").textContent = brl(t.total);
+  $("#sFuel").textContent = brl(t.fuel); $("#sHosp").textContent = brl(t.hosp); $("#sOut").textContent = brl(t.out);
+  $("#sCkm").textContent = t.km>0 ? brl(t.total/t.km) : "—";
+  $("#sCons").textContent = t.cons ? n1(t.cons)+" km/l" : "—";
+  $("#sPm").textContent = t.pm ? brl(t.pm) : "—";
+  const tot = t.total||1;
+  $("#barGastos").innerHTML = t.total ? `<i style="width:${t.fuel/tot*100}%;background:var(--sea)"></i><i style="width:${t.hosp/tot*100}%;background:var(--coral)"></i><i style="width:${t.out/tot*100}%;background:var(--leaf)"></i>` : "";
+  const orc = num(S.config.orcamento);
+  $("#orcBox").hidden = !(orc>0);
+  if(orc>0){ const p = t.total/orc; $("#orcTxt").textContent = `${brl(t.total)} de ${brl(orc)}`; const b=$("#orcBar"); b.style.width=Math.min(100,p*100)+"%"; b.style.background = p>1 ? "var(--coral)" : p>.85 ? "var(--sun)" : "var(--sea)"; }
+  if(!$("#cCons").value) $("#cCons").value = t.cons ? t.cons.toFixed(1) : S.config.consumo;
+  if(!$("#cPreco").value){ const up=ultimoPreco(); if(up) $("#cPreco").value = up.toFixed(2); }
+  calcTrecho();
+  const all = todosLancamentos().slice(0,5);
+  $("#ultimos").innerHTML = all.length ? all.map(itemHTML).join("") : `<div class="empty"><b>Nenhum gasto ainda</b>Toque em “Abasteci” no primeiro posto da viagem.</div>`;
+  const ini = S.config.ini, fim = S.config.fim;
+  $("#subTitle").textContent = S.config.veiculo ? S.config.veiculo + (ini ? " · "+fmtData(ini)+(fim?" a "+fmtData(fim):"") : "") : "Diário de estrada";
+}
+function calcTrecho(){
+  const km=num($("#cKm").value), c=num($("#cCons").value), p=num($("#cPreco").value);
+  $("#cRes").textContent = km>0 && c>0 ? `${n1(km/c)} litros` + (p>0 ? ` · ${brl(km/c*p)}` : "") : "Digite a distância para estimar litros e custo.";
+}
+["#cKm","#cCons","#cPreco"].forEach(s => $(s).addEventListener("input", calcTrecho));
+
+function todosLancamentos(){
+  return [
+    ...S.abast.map(a=>({...a,_t:"abast",_d:a.data||""})),
+    ...S.hosp.map(h=>({...h,_t:"hosp",_d:h.checkin||""})),
+    ...S.outros.map(o=>({...o,_t:"outro",_d:o.data||""}))
+  ].sort((a,b)=>b._d.localeCompare(a._d));
+}
+function itemHTML(x, acoes){
+  let ico, t, s, v, sub="";
+  if(x._t==="abast"){ ico="fuel"; t=x.posto||"Posto"; s=[x.cidade, fmtData(x.data)].filter(Boolean).join(" · "); v=brl(x.total); sub=`${n1(x.litros)} l · ${brl(x.preco)}/l`; }
+  else if(x._t==="hosp"){ ico="hosp"; t=x.nome; const nn=noites(x.checkin,x.checkout); s=[x.cidade, x.plat, x.checkin?fmtData(x.checkin):""].filter(Boolean).join(" · "); v=brl(x.valor); sub = nn ? `${nn} noite${nn>1?"s":""}` : ""; }
+  else { ico="out"; t=x.desc||x.cat; s=[x.cat!==t?x.cat:"", x.cidade, fmtData(x.data)].filter(Boolean).join(" · "); v=brl(x.valor); }
+  const ac = acoes ? `<div class="acts">
+      ${x.lat ? `<a class="btn sm waze" target="_blank" rel="noopener" href="${wazeUrl(x.lat,x.lng)}">Waze</a><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${x.lat},${x.lng}">Ver no mapa</a>`:""}
+      ${x.link ? `<a class="btn sm" target="_blank" rel="noopener" href="${esc(x.link)}">Reserva</a>`:""}
+      <button class="btn sm" type="button" data-edit="${x._t}:${x.id}">Editar</button>
+      <button class="btn sm danger" type="button" data-del="${x._t}:${x.id}">Excluir</button></div>` : "";
+  return `<div class="item"><div class="ico ${ico}">${ICON[ico]}</div><div style="min-width:0"><div class="t">${esc(t)}</div><div class="s">${esc(s)}</div></div><div class="v">${v}<small>${esc(sub)}</small></div>${ac}</div>`;
+}
+
+/* ---------- Gastos ---------- */
+let segG = "abast";
+$("#segGastos").onclick = e => { const b=e.target.closest("button"); if(!b) return; segG=b.dataset.g; renderGastos(); };
+function renderGastos(){
+  $$("#segGastos button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.g===segG));
+  const t = totais();
+  const L = todosLancamentos().filter(x=>x._t===segG);
+  $("#gTitle").textContent = {abast:"Abastecimentos",hosp:"Hospedagens",outro:"Outros gastos"}[segG];
+  $("#gResumo").textContent = segG==="abast" ? `${L.length} abastecimento(s) · ${n1(t.litros)} litros · ${brl(t.fuel)}` :
+    segG==="hosp" ? `${L.length} hospedagem(ns) · ${t.noites} noite(s) · ${brl(t.hosp)}` : `${L.length} gasto(s) · ${brl(t.out)}`;
+  $("#gList").innerHTML = L.length ? L.map(x=>itemHTML(x,true)).join("") :
+    `<div class="empty"><b>Nada lançado aqui</b>Toque em “+ Adicionar”.</div>`;
+}
+$("#gAdd").onclick = () => abrir(segG);
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-add]"); if(a) abrir(a.dataset.add);
+  const ed = e.target.closest("[data-edit]"); if(ed){ const [t,id]=ed.dataset.edit.split(":"); abrir(t,id); }
+  const del = e.target.closest("[data-del]");
+  if(del){
+    if(del.dataset.armed){ const [t,id]=del.dataset.del.split(":"); const k={abast:"abast",hosp:"hosp",outro:"outros"}[t]; S[k]=S[k].filter(x=>x.id!==id); save(); toast("Excluído"); }
+    else { del.dataset.armed="1"; del.textContent="Confirmar exclusão"; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.armed; del.textContent="Excluir"; } }, 3500); }
+  }
+  if(e.target.closest("[data-close]")) e.target.closest("dialog").close();
+});
+
+/* ---------- Formulários ---------- */
+let editId = null, formLoc = null, pertoCache = [];
+function setLoc(el, loc){ $(el).textContent = loc ? `📍 ${loc.cidade||"Local marcado"} · ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : "Sem localização"; }
+async function pegarLocForm(el, cidadeInput, postoInput){
+  $(el).textContent = "Pegando localização…";
+  try{
+    const h = await localizar(true);
+    formLoc = {lat:h.lat, lng:h.lng, cidade:h.cidade};
+    setLoc(el, formLoc);
+    if(cidadeInput && !$(cidadeInput).value) $(cidadeInput).value = h.cidade||"";
+    if(postoInput && !$(postoInput).value){
+      const prox = pertoCache.filter(p=>p.tipo==="posto").map(p=>({...p,d:haversine([h.lat,h.lng],[p.lat,p.lng])})).sort((a,b)=>a.d-b.d)[0];
+      if(prox && prox.d<0.25) $(postoInput).value = prox.nome;
+    }
+  }catch(e){ $(el).textContent = e.message; }
+}
+function abrir(tipo, id){
+  editId = id||null; formLoc = null;
+  if(tipo==="abast"){
+    const a = id ? S.abast.find(x=>x.id===id) : null;
+    $("#dAbastT").textContent = a ? "Editar abastecimento" : "Novo abastecimento";
+    $("#aComb").innerHTML = COMBS.map(c=>`<option>${c}</option>`).join("");
+    $("#aPosto").value = a?.posto||""; $("#aComb").value = a?.comb||S.config.comb; $("#aData").value = a?.data||localDT();
+    $("#aPreco").value = a?.preco||""; $("#aLitros").value = a?.litros||""; $("#aTotal").value = a?.total||"";
+    $("#aOdo").value = a?.odo||""; $("#aCidade").value = a?.cidade||""; $("#aCheio").checked = a ? !!a.cheio : true;
+    $("#dlPostos").innerHTML = [...new Set([...pertoCache.filter(p=>p.tipo==="posto").map(p=>p.nome), ...S.abast.map(x=>x.posto)].filter(Boolean))].map(n=>`<option value="${esc(n)}">`).join("");
+    $("#dAbast").showModal();
+    if(a && a.lat){ formLoc={lat:a.lat,lng:a.lng,cidade:a.cidade}; setLoc("#aLoc",formLoc); } else pegarLocForm("#aLoc","#aCidade","#aPosto");
+  } else if(tipo==="hosp"){
+    const h = id ? S.hosp.find(x=>x.id===id) : null;
+    $("#dHospT").textContent = h ? "Editar hospedagem" : "Nova hospedagem";
+    $("#hNome").value=h?.nome||""; $("#hPlat").value=h?.plat||"Booking"; $("#hCidade").value=h?.cidade||here?.cidade||"";
+    $("#hIn").value=h?.checkin||""; $("#hOut").value=h?.checkout||""; $("#hValor").value=h?.valor||""; $("#hLink").value=h?.link||""; $("#hObs").value=h?.obs||"";
+    $("#dlHosp").innerHTML = pertoCache.filter(p=>p.tipo==="hosp").map(p=>`<option value="${esc(p.nome)}">`).join("");
+    if(h && h.lat){ formLoc={lat:h.lat,lng:h.lng,cidade:h.cidade}; } setLoc("#hLoc", formLoc);
+    $("#dHosp").showModal();
+  } else {
+    const o = id ? S.outros.find(x=>x.id===id) : null;
+    $("#dOutroT").textContent = o ? "Editar gasto" : "Outro gasto";
+    $("#oCat").value=o?.cat||"Pedágio"; $("#oValor").value=o?.valor||""; $("#oDesc").value=o?.desc||""; $("#oData").value=o?.data||localDT(); $("#oCidade").value=o?.cidade||here?.cidade||"";
+    $("#oGps").checked = !o; $("#dOutro").showModal();
+  }
+}
+$("#aGps").onclick = () => pegarLocForm("#aLoc","#aCidade","#aPosto");
+$("#hGps").onclick = () => pegarLocForm("#hLoc","#hCidade");
+$("#hNome").addEventListener("change", () => { // ao escolher hospedagem da busca, usa a posição dela
+  const p = pertoCache.find(x=>x.tipo==="hosp" && x.nome===$("#hNome").value);
+  if(p){ formLoc={lat:p.lat,lng:p.lng,cidade:here?.cidade||""}; setLoc("#hLoc",formLoc); }
+});
+// cálculo automático litros/total
+let ultimoEditado = "litros";
+$("#aLitros").addEventListener("input", ()=>{ ultimoEditado="litros"; const p=num($("#aPreco").value), l=num($("#aLitros").value); if(p&&l) $("#aTotal").value=(p*l).toFixed(2); });
+$("#aTotal").addEventListener("input", ()=>{ ultimoEditado="total"; const p=num($("#aPreco").value), t=num($("#aTotal").value); if(p&&t) $("#aLitros").value=(t/p).toFixed(2); });
+$("#aPreco").addEventListener("input", ()=>{ const p=num($("#aPreco").value); if(!p) return; if(ultimoEditado==="litros"&&num($("#aLitros").value)) $("#aTotal").value=(p*num($("#aLitros").value)).toFixed(2); else if(num($("#aTotal").value)) $("#aLitros").value=(num($("#aTotal").value)/p).toFixed(2); });
+
+function upsert(lista, obj){ const i = S[lista].findIndex(x=>x.id===obj.id); if(i>=0) S[lista][i]=obj; else S[lista].push(obj); }
+$("#fAbast").addEventListener("submit", e => {
+  const preco=num($("#aPreco").value); let litros=num($("#aLitros").value), total=num($("#aTotal").value);
+  if(!litros && total && preco) litros = total/preco; if(!total && litros && preco) total = litros*preco;
+  if(!total){ e.preventDefault(); toast("Informe os litros ou o valor total."); return; }
+  const old = editId ? S.abast.find(x=>x.id===editId) : {};
+  upsert("abast", {...old, id:editId||uid(), posto:$("#aPosto").value.trim(), comb:$("#aComb").value, data:$("#aData").value, preco, litros:+litros.toFixed(2), total:+total.toFixed(2), odo:$("#aOdo").value, cidade:$("#aCidade").value.trim(), cheio:$("#aCheio").checked, lat:formLoc?.lat??old?.lat??null, lng:formLoc?.lng??old?.lng??null});
+  if(formLoc) addPontoTrajeto(formLoc.lat, formLoc.lng, true);
+  save(); toast("Abastecimento salvo");
+});
+$("#fHosp").addEventListener("submit", () => {
+  const old = editId ? S.hosp.find(x=>x.id===editId) : {};
+  upsert("hosp", {...old, id:editId||uid(), nome:$("#hNome").value.trim(), plat:$("#hPlat").value, cidade:$("#hCidade").value.trim(), checkin:$("#hIn").value, checkout:$("#hOut").value, valor:num($("#hValor").value), link:$("#hLink").value.trim(), obs:$("#hObs").value.trim(), lat:formLoc?.lat??old?.lat??null, lng:formLoc?.lng??old?.lng??null});
+  save(); toast("Hospedagem salva");
+});
+$("#fOutro").addEventListener("submit", () => {
+  const old = editId ? S.outros.find(x=>x.id===editId) : {};
+  const id = editId||uid();
+  upsert("outros", {...old, id, cat:$("#oCat").value, valor:num($("#oValor").value), desc:$("#oDesc").value.trim(), data:$("#oData").value, cidade:$("#oCidade").value.trim()});
+  save(); toast("Gasto salvo");
+  if($("#oGps").checked) gps().then(p=>{ const o=S.outros.find(x=>x.id===id); if(o){ o.lat=p.lat; o.lng=p.lng; persist(); } }).catch(()=>{});
+});
+
+/* ---------- Trajeto (GPS contínuo) ---------- */
+let watchId=null, wakeLock=null;
+function addPontoTrajeto(lat,lng,forcar){
+  const last = S.trajeto[S.trajeto.length-1];
+  if(!forcar && last && haversine(last,[lat,lng]) < 0.15) return false;
+  if(last && haversine(last,[lat,lng]) < 0.02) return false;
+  S.trajeto.push([+lat.toFixed(5), +lng.toFixed(5), Date.now()]);
+  return true;
+}
+async function toggleRec(){
+  if(watchId!==null){
+    navigator.geolocation.clearWatch(watchId); watchId=null;
+    try{ await wakeLock?.release(); }catch(e){} wakeLock=null;
+    $("#recDot").classList.remove("rec"); $("#recTxt").textContent="Gravar trajeto"; toast("Trajeto pausado"); return;
+  }
+  if(!navigator.geolocation || !window.isSecureContext){ toast("O GPS só funciona com o app aberto por https."); return; }
+  watchId = navigator.geolocation.watchPosition(p => {
+    if(p.coords.accuracy > 80) return;
+    if(addPontoTrajeto(p.coords.latitude, p.coords.longitude)){ persist(); renderInicio(); }
+  }, e => toast(e.code===1 ? "Permissão de localização negada." : "GPS instável…"), {enableHighAccuracy:true, maximumAge:5000, timeout:30000});
+  try{ wakeLock = await navigator.wakeLock?.request("screen"); }catch(e){}
+  $("#recDot").classList.add("rec"); $("#recTxt").textContent="Gravando… parar"; toast("Gravando trajeto. Deixe a tela ligada.");
+}
+$("#btnRec").onclick = toggleRec;
+document.addEventListener("visibilitychange", async () => { if(watchId!==null && document.visibilityState==="visible"){ try{ wakeLock = await navigator.wakeLock?.request("screen"); }catch(e){} } });
+
+/* ---------- Perto de mim ---------- */
+let mapP=null, layerP=null, filtroP="posto";
+function tiles(m){ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19, attribution:"© OpenStreetMap"}).addTo(m); }
+function pinIcon(cor, letra){ return L.divIcon({className:"", html:`<div class="pin" style="background:${cor}"><span>${letra}</span></div>`, iconSize:[30,30], iconAnchor:[15,30], popupAnchor:[0,-28]}); }
+const cor = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function initPerto(){
+  if(!window.L){ $("#pStatus").textContent="Mapa indisponível sem internet."; return; }
+  if(!mapP){ mapP = L.map("mapPerto",{zoomControl:true}).setView([-8.05,-34.9],11); tiles(mapP); layerP = L.layerGroup().addTo(mapP); }
+  setTimeout(()=>mapP.invalidateSize(),50);
+  renderPertoHeader();
+  if(!here) localizar(true).then(()=>buscarPerto()).catch(e=>{ $("#pStatus").textContent=e.message; });
+}
+function wazeEmbed(){ const f=$("#wazeFrame"); if(f.hidden) return; const lat=here?.lat ?? -8.05, lng=here?.lng ?? -34.9; const src=`https://embed.waze.com/iframe?zoom=13&lat=${lat.toFixed(4)}&lon=${lng.toFixed(4)}&pin=1`; if(f.src!==src) f.src=src; }
+$("#btnWazeMapa").onclick = () => { const f=$("#wazeFrame"); f.hidden=!f.hidden; $("#btnWazeMapa").textContent = f.hidden ? "Mostrar" : "Esconder"; wazeEmbed(); };
+function renderPertoHeader(){
+  $("#pCidade").textContent = here ? (here.cidade||"Localização atual") + (here.planejado ? " (roteiro)" : "") : "—";
+  wazeEmbed();
+  const lat=here?.lat ?? -8.05, lng=here?.lng ?? -34.9, cid = here?.cidade ? here.cidade+", Pernambuco" : "Pernambuco";
+  const ci = S.config.ini && new Date(S.config.ini) >= new Date(new Date().toDateString()) ? S.config.ini : new Date().toISOString().slice(0,10);
+  const co = S.config.fim && S.config.fim>ci ? S.config.fim : new Date(new Date(ci+"T12:00").getTime()+864e5).toISOString().slice(0,10);
+  const pes = Math.max(1, num(S.config.pessoas)||2);
+  const links = [
+    ["Postos no Google Maps", `https://www.google.com/maps/search/posto+de+gasolina/@${lat},${lng},14z`],
+    ["Hotéis no Google Maps", `https://www.google.com/maps/search/hoteis/@${lat},${lng},14z`],
+    ["Booking", `https://www.booking.com/searchresults.pt-br.html?ss=${encodeURIComponent(cid)}&latitude=${lat}&longitude=${lng}&checkin=${ci}&checkout=${co}&group_adults=${pes}&no_rooms=1`],
+    ["Airbnb", `https://www.airbnb.com.br/s/${encodeURIComponent(cid)}/homes?checkin=${ci}&checkout=${co}&adults=${pes}`],
+    ["Preços ANP da semana", "https://preco.anp.gov.br/"],
+    ["Restaurantes perto", `https://www.google.com/maps/search/restaurantes/@${lat},${lng},14z`]
+  ];
+  $("#extBtns").innerHTML = links.map(([t,u])=>`<a class="btn sm" target="_blank" rel="noopener" href="${u}">${t}</a>`).join("");
+  // preços registrados na região (20 km)
+  if(here){
+    const reg = S.abast.filter(a=>a.lat).map(a=>({...a,d:haversine([here.lat,here.lng],[a.lat,a.lng])})).filter(a=>a.d<20).sort((a,b)=>a.preco-b.preco);
+    $("#precosRegiao").hidden = !reg.length;
+    $("#precosList").innerHTML = reg.map((a,i)=>`<div class="item"><div class="ico fuel">${ICON.fuel}</div><div style="min-width:0"><div class="t">${esc(a.posto||"Posto")}</div><div class="s">${esc(a.comb)} · ${fmtData(a.data)} · ${n1(a.d)} km</div></div><div class="v">${brl(a.preco)}<small>${i===0?"mais barato":""}</small></div></div>`).join("");
+  }
+}
+$("#segPerto").onclick = e => { const b=e.target.closest("button"); if(!b) return; filtroP=b.dataset.f; $$("#segPerto button").forEach(x=>x.setAttribute("aria-pressed",x===b)); renderPertoLista(); };
+$("#raio").onchange = () => buscarPerto();
+$("#btnBuscar").onclick = () => localizar(false).then(buscarPerto).catch(()=>{});
+function tfetch(u, o={}, ms=20000){ const c=new AbortController(); const t=setTimeout(()=>c.abort(), ms); return fetch(u,{...o, signal:c.signal}).finally(()=>clearTimeout(t)); }
+const OVERPASS = ["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter","https://maps.mail.ru/osm/tools/overpass/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+async function overpass(q){
+  for(const url of OVERPASS){
+    try{ const res = await tfetch(url,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(q)}, 25000);
+      if(res.ok){ const j = await res.json(); if(j && j.elements) return j; } }catch(e){}
+  }
+  return null;
+}
+const wazeUrl = (lat,lng) => `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+async function buscarPerto(){
+  if(!here){ return; }
+  const r = $("#raio").value, {lat,lng} = here;
+  $("#pStatus").textContent = "Buscando postos e hospedagens…";
+  const q = `[out:json][timeout:25];(nwr["amenity"="fuel"](around:${r},${lat},${lng});nwr["tourism"~"^(hotel|motel|guest_house|hostel|apartment|chalet)$"](around:${r},${lat},${lng}););out center tags 150;`;
+  const data = await overpass(q);
+  if(!data){ $("#pStatus").textContent = "O serviço de mapas está fora do ar agora. Tente de novo em alguns minutos ou use os botões do Google Maps abaixo."; return; }
+  pertoCache = data.elements.map(el=>{
+    const t=el.tags||{}, la=el.lat??el.center?.lat, lo=el.lon??el.center?.lon;
+    const tipo = t.amenity==="fuel" ? "posto" : "hosp";
+    const nome = t.name || (t.brand ? t.brand : (tipo==="posto"?"Posto sem nome":"Hospedagem sem nome"));
+    return {tipo, nome, marca:t.brand||"", lat:la, lng:lo, d:haversine([lat,lng],[la,lo]), tags:t};
+  }).filter(x=>x.lat).sort((a,b)=>a.d-b.d);
+  const np = pertoCache.filter(x=>x.tipo==="posto").length, nh = pertoCache.length-np;
+  $("#pStatus").textContent = `${np} postos e ${nh} hospedagens num raio de ${r/1000} km.`;
+  renderPertoLista();
+}
+function renderPertoLista(){
+  const L_ = pertoCache.filter(x=>x.tipo===filtroP);
+  $("#pListTitle").textContent = filtroP==="posto" ? "Postos próximos" : "Hospedagens próximas";
+  $("#pCount").textContent = L_.length;
+  if(mapP){
+    layerP.clearLayers();
+    if(here){ L.marker([here.lat,here.lng],{icon:L.divIcon({className:"",html:'<div class="me"></div>',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(layerP).bindPopup("Você está aqui"); }
+    const c = filtroP==="posto" ? cor("--sea") : cor("--coral");
+    L_.forEach((p,i)=>L.marker([p.lat,p.lng],{icon:pinIcon(c, i+1)}).addTo(layerP).bindPopup(`<b>${esc(p.nome)}</b><br>${n1(p.d)} km<br><a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}">Traçar rota</a>`));
+    const pts = L_.slice(0,15).map(p=>[p.lat,p.lng]); if(here) pts.push([here.lat,here.lng]);
+    if(pts.length>1) mapP.fitBounds(pts,{padding:[30,30],maxZoom:15}); else if(here) mapP.setView([here.lat,here.lng],14);
+  }
+  if(!L_.length){ $("#pList").innerHTML = `<div class="empty"><b>Nada encontrado</b>${pertoCache.length?"Aumente o raio de busca.":"Use “Buscar aqui”."}</div>`; return; }
+  $("#pList").innerHTML = L_.slice(0,40).map((p,i)=>{
+    const meu = S.abast.filter(a=>a.lat && haversine([a.lat,a.lng],[p.lat,p.lng])<0.15).sort((a,b)=>(b.data||"").localeCompare(a.data||""))[0];
+    const t = p.tags, extra = p.tipo==="posto"
+      ? [t.brand && t.brand!==p.nome ? t.brand : "", t.opening_hours==="24/7" ? "24h" : "", t["fuel:ethanol"]==="yes"?"etanol":"", t["fuel:diesel"]==="yes"?"diesel":"", t["fuel:cng"]==="yes"?"GNV":""].filter(Boolean)
+      : [({hotel:"Hotel",motel:"Motel",guest_house:"Pousada",hostel:"Hostel",apartment:"Apartamento",chalet:"Chalé"})[t.tourism]||"", t.stars?t.stars+"★":""].filter(Boolean);
+    const q = encodeURIComponent(p.nome+" "+(here?.cidade||""));
+    return `<div class="item"><div class="ico ${p.tipo==="posto"?"fuel":"hosp"}"><span class="num" style="font-weight:700">${i+1}</span></div>
+      <div style="min-width:0"><div class="t">${esc(p.nome)}</div><div class="s">${esc(extra.join(" · "))}${meu?` <span class="chip good">você pagou ${brl(meu.preco)}</span>`:""}</div></div>
+      <div class="v">${n1(p.d)}<small>km</small></div>
+      <div class="acts">
+        <a class="btn sm waze" target="_blank" rel="noopener" href="${wazeUrl(p.lat,p.lng)}">Waze</a>
+        <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}">Rota</a>
+        <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Ver no Google</a>
+        ${p.tipo==="posto" ? `<button class="btn sm" type="button" data-abast-aqui="${i}">Abasteci aqui</button>` :
+          `<a class="btn sm" target="_blank" rel="noopener" href="https://www.booking.com/searchresults.pt-br.html?ss=${q}">Booking</a>${t.website?`<a class="btn sm" target="_blank" rel="noopener" href="${esc(t.website)}">Site</a>`:""}<button class="btn sm" type="button" data-hosp-aqui="${i}">Fiquei aqui</button>`}
+      </div></div>`;
+  }).join("");
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-abast-aqui]");
+  if(a){ const p = pertoCache.filter(x=>x.tipo==="posto")[+a.dataset.abastAqui]; abrir("abast"); $("#aPosto").value=p.nome; formLoc={lat:p.lat,lng:p.lng,cidade:here?.cidade||""}; $("#aCidade").value=here?.cidade||""; setTimeout(()=>setLoc("#aLoc",formLoc),0); }
+  const h = e.target.closest("[data-hosp-aqui]");
+  if(h){ const p = pertoCache.filter(x=>x.tipo==="hosp")[+h.dataset.hospAqui]; abrir("hosp"); $("#hNome").value=p.nome; formLoc={lat:p.lat,lng:p.lng,cidade:here?.cidade||""}; setLoc("#hLoc",formLoc); }
+});
+
+/* ---------- Roteiro ---------- */
+let mapR=null, layerR=null, layerRP=null, calcSeq=0;
+const addDias = (iso, n) => { const d=new Date(iso+"T12:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const fmtMin = m => m==null ? "" : (m>=60 ? `${Math.floor(m/60)}h${pad(Math.round(m%60))}` : `${Math.round(m)} min`);
+function precoPlan(){ return num(S.config.precoRef) || ultimoPreco() || 6.3; }
+function consPlan(){ return consumoReal() || num(S.config.consumo) || 12; }
+function datasParadas(){
+  let d = S.config.ini || new Date().toISOString().slice(0,10);
+  return S.roteiro.map(p => { const ci=d, co=addDias(d, Math.max(0,num(p.noites))); d=co; return {ci, co}; });
+}
+function rotaValida(){
+  const R=S.roteiro, Lg=S.legs||[];
+  if(R.length<2 || Lg.length!==R.length-1) return false;
+  return Lg.every((l,i)=>l.de===R[i].id && l.para===R[i+1].id);
+}
+function simplificar(pts, kmMin){ const o=[pts[0]]; for(const p of pts){ if(haversine(o[o.length-1],p)>=kmMin) o.push(p); } const last=pts[pts.length-1]; if(o[o.length-1]!==last) o.push(last); return o; }
+async function geocodificar(q){
+  const base = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&q=";
+  const tentativas = /,/.test(q) ? [q] : [q+", Pernambuco", q];
+  for(const t of tentativas){
+    try{ const r = await tfetch(base+encodeURIComponent(t),{},15000); const j = await r.json();
+      if(j[0]) return {nome:j[0].name || q, lat:+(+j[0].lat).toFixed(5), lng:+(+j[0].lon).toFixed(5), desc:j[0].display_name}; }catch(e){}
+  }
+  return null;
+}
+$("#fParada").addEventListener("submit", async e => {
+  e.preventDefault();
+  const q = $("#rCidade").value.trim(); if(!q) return;
+  $("#rAdd").disabled = true; $("#rAdd").textContent = "Procurando…";
+  const g = await geocodificar(q);
+  $("#rAdd").disabled = false; $("#rAdd").textContent = "Adicionar";
+  if(!g){ toast("Não achei essa cidade. Tente com o estado, ex.: Bonito, PE"); return; }
+  S.roteiro.push({id:uid(), nome:g.nome, lat:g.lat, lng:g.lng, desc:g.desc, noites:num($("#rNoites").value)});
+  $("#rCidade").value=""; $("#rNoites").value="0";
+  persist(); toast(g.desc.split(",").slice(0,2).join(",")+" adicionada");
+  calcRota();
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-parada]"); if(!b) return;
+  const [acao, id] = b.dataset.parada.split(":"); const i = S.roteiro.findIndex(p=>p.id===id); if(i<0) return;
+  if(acao==="sobe" && i>0){ [S.roteiro[i-1],S.roteiro[i]]=[S.roteiro[i],S.roteiro[i-1]]; persist(); calcRota(); }
+  if(acao==="desce" && i<S.roteiro.length-1){ [S.roteiro[i+1],S.roteiro[i]]=[S.roteiro[i],S.roteiro[i+1]]; persist(); calcRota(); }
+  if(acao==="tira"){
+    if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="Confirmar"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.armed; b.textContent="Remover"; } },3500); return; }
+    S.roteiro.splice(i,1); persist(); calcRota();
+  }
+  if(acao==="noite"){ const p=S.roteiro[i]; p.noites = Math.max(0, num(p.noites) + (b.dataset.d==="+"?1:-1)); persist(); renderRoteiro(); }
+  if(acao==="perto"){ const p=S.roteiro[i]; here={lat:p.lat,lng:p.lng,acc:0,cidade:p.nome,uf:"",planejado:true}; go("perto"); buscarPerto(); }
+});
+$("#btnCalcRota").onclick = () => calcRota();
+async function calcRota(){
+  const seq = ++calcSeq, P = S.roteiro;
+  if(P.length<2){ S.legs=[]; save(); renderRoteiro(); return; }
+  $("#rStatus").textContent = "Calculando a rota pelas estradas…";
+  const legs = [];
+  for(let i=1;i<P.length;i++){
+    const a=P[i-1], b=P[i];
+    try{
+      const r = await tfetch(`https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`,{},20000);
+      const j = await r.json(); const rt = j.routes[0];
+      legs.push({de:a.id, para:b.id, km:rt.distance/1000, min:rt.duration/60, geo:simplificar(rt.geometry.coordinates.map(c=>[+c[1].toFixed(5),+c[0].toFixed(5)]),0.25)});
+    }catch(e){
+      legs.push({de:a.id, para:b.id, km:haversine([a.lat,a.lng],[b.lat,b.lng])*1.3, min:null, geo:[[a.lat,a.lng],[b.lat,b.lng]], aprox:true});
+    }
+  }
+  if(seq!==calcSeq) return;
+  S.legs = legs; $("#rPostosCard").hidden = true; layerRP?.clearLayers(); save(); renderRoteiro();
+}
+function renderRoteiro(){
+  const R = S.roteiro, ok = rotaValida(), datas = datasParadas();
+  const cons = consPlan(), preco = precoPlan(), autonomia = num(S.config.tanque)*cons;
+  const pes = Math.max(1, num(S.config.pessoas)||2);
+  $("#rList").innerHTML = R.length ? R.map((p,i)=>{
+    const dt = datas[i], dorme = num(p.noites)>0;
+    const q = encodeURIComponent(p.nome+", "+(p.desc||"").split(",").slice(-3,-2)[0]?.trim());
+    const quando = i===0 ? `saída ${fmtData(dt.ci)}` : `chega ${fmtData(dt.ci)}` + (dorme ? ` · sai ${fmtData(dt.co)}` : "");
+    return `<div class="item"><div class="stopNum ${dorme?"dorme":""}">${i+1}</div>
+      <div style="min-width:0"><div class="t">${esc(p.nome)}</div><div class="s">${quando}</div></div>
+      <div class="v" style="display:flex;gap:4px;align-items:center"><button class="btn sm" type="button" data-parada="noite:${p.id}" data-d="-" aria-label="Menos uma noite">−</button><span style="min-width:44px;text-align:center">${num(p.noites)}<small>noite${num(p.noites)===1?"":"s"}</small></span><button class="btn sm" type="button" data-parada="noite:${p.id}" data-d="+" aria-label="Mais uma noite">+</button></div>
+      <div class="acts">
+        <a class="btn sm waze" target="_blank" rel="noopener" href="${wazeUrl(p.lat,p.lng)}">Waze</a>
+        ${dorme ? `<a class="btn sm" target="_blank" rel="noopener" href="https://www.booking.com/searchresults.pt-br.html?ss=${q}&checkin=${dt.ci}&checkout=${dt.co}&group_adults=${pes}&no_rooms=1">Booking</a>
+        <a class="btn sm" target="_blank" rel="noopener" href="https://www.airbnb.com.br/s/${q}/homes?checkin=${dt.ci}&checkout=${dt.co}&adults=${pes}">Airbnb</a>` : ""}
+        <button class="btn sm" type="button" data-parada="perto:${p.id}">Postos e hotéis lá</button>
+        ${i>0?`<button class="btn sm" type="button" data-parada="sobe:${p.id}" aria-label="Subir">↑</button>`:""}
+        ${i<R.length-1?`<button class="btn sm" type="button" data-parada="desce:${p.id}" aria-label="Descer">↓</button>`:""}
+        <button class="btn sm danger" type="button" data-parada="tira:${p.id}">Remover</button>
+      </div></div>`;
+  }).join("") : `<div class="empty"><b>Nenhuma cidade ainda</b>Comece pela cidade de onde você sai.</div>`;
+
+  // trechos
+  const Lg = ok ? S.legs : [];
+  const kmT = Lg.reduce((s,l)=>s+l.km,0), minT = Lg.reduce((s,l)=>s+(l.min||0),0), litT = kmT/cons;
+  const noitesT = R.reduce((s,p)=>s+num(p.noites),0);
+  $("#rStats").innerHTML = ok ? [
+    ["Distância total", n1(kmT)+" km"], ["Tempo dirigindo", fmtMin(minT)],
+    ["Combustível", n1(litT)+" l"], ["Custo estimado", brl(litT*preco)],
+    ["Noites", String(noitesT)], ["Paradas para abastecer", String(Math.max(0, Math.ceil(kmT/(autonomia*0.8))-1))]
+  ].map(([k,v])=>`<div class="stat"><span class="label">${k}</span><b>${v}</b></div>`).join("") : "";
+  $("#rStatus").textContent = R.length<2 ? "Adicione pelo menos duas cidades para ver a rota." :
+    !ok ? "Toque em Recalcular para atualizar a rota." :
+    `Calculado com ${n1(cons)} km/l e ${brl(preco)} o litro${consumoReal()?" (seu consumo real)":""}. Tempo sem paradas.` + (Lg.some(l=>l.aprox)?" Alguns trechos estão em linha reta porque o serviço de rotas não respondeu.":"");
+  if(ok){
+    const o=R[0], d=R[R.length-1], meio=R.slice(1,-1).map(p=>`${p.lat},${p.lng}`).join("|");
+    $("#rLinks").innerHTML = `<a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&origin=${o.lat},${o.lng}&destination=${d.lat},${d.lng}${meio?"&waypoints="+encodeURIComponent(meio):""}&travelmode=driving">Rota inteira no Google Maps</a>
+      <a class="btn sm waze" target="_blank" rel="noopener" href="${wazeUrl(R[1].lat,R[1].lng)}">Waze até a 1ª parada</a>`;
+  } else $("#rLinks").innerHTML = "";
+  $("#rTrechos").innerHTML = Lg.length ? Lg.map((l,i)=>{
+    const a=R[i], b=R[i+1], lit=l.km/cons, longo = l.km > autonomia*0.8;
+    return `<div class="item"><div class="ico fuel">${ICON.fuel}</div>
+      <div style="min-width:0"><div class="t">${esc(a.nome)} → ${esc(b.nome)}</div>
+      <div class="s">${fmtMin(l.min)}${l.min?" · ":""}${n1(lit)} l ${longo?`<span class="chip warn">abasteça no caminho</span>`:""}</div></div>
+      <div class="v">${n1(l.km)} km<small>${brl(lit*preco)}</small></div>
+      <div class="acts">
+        <a class="btn sm waze" target="_blank" rel="noopener" href="${wazeUrl(b.lat,b.lng)}">Waze até ${esc(b.nome)}</a>
+        <button class="btn sm" type="button" data-trecho="${i}">Postos no caminho</button>
+      </div></div>`;
+  }).join("") : `<div class="empty"><b>Sem trechos</b>Eles aparecem quando houver duas cidades ou mais.</div>`;
+
+  // mapa
+  if(!window.L) return;
+  if(!mapR){ mapR = L.map("mapRoteiro").setView([-8.3,-36.5],7); tiles(mapR); layerR = L.layerGroup().addTo(mapR); layerRP = L.layerGroup().addTo(mapR); }
+  setTimeout(()=>mapR.invalidateSize(),50);
+  layerR.clearLayers();
+  const pts=[];
+  Lg.forEach(l => { L.polyline(l.geo,{color:cor("--sea"),weight:5,opacity:.85,dashArray:l.aprox?"6 8":null}).addTo(layerR); pts.push(...l.geo); });
+  R.forEach((p,i) => { L.marker([p.lat,p.lng],{icon:pinIcon(num(p.noites)>0?cor("--coral"):cor("--sea"), i+1)}).addTo(layerR).bindPopup(`<b>${esc(p.nome)}</b><br>${num(p.noites)} noite(s)<br><a target="_blank" rel="noopener" href="${wazeUrl(p.lat,p.lng)}">Abrir no Waze</a>`); pts.push([p.lat,p.lng]); });
+  if(pts.length>1) mapR.fitBounds(pts,{padding:[30,30]}); else if(pts.length) mapR.setView(pts[0],11);
+}
+document.addEventListener("click", e => { const b=e.target.closest("[data-trecho]"); if(b) postosNoCaminho(+b.dataset.trecho); });
+async function postosNoCaminho(i){
+  const l = S.legs[i], a = S.roteiro[i], b = S.roteiro[i+1]; if(!l) return;
+  const card = $("#rPostosCard"); card.hidden=false;
+  $("#rPostosT").textContent = `Postos de ${a.nome} até ${b.nome}`; $("#rPostosN").textContent = "…";
+  $("#rPostosNota").textContent = "Procurando postos a até 800 m da estrada…"; $("#rPostos").innerHTML = "";
+  card.scrollIntoView({behavior:"smooth", block:"start"});
+  const amostra = simplificar(l.geo, Math.max(1.5, l.km/150));
+  const q = `[out:json][timeout:45];nwr["amenity"="fuel"](around:800,${amostra.map(p=>p[0]+","+p[1]).join(",")});out center tags 300;`;
+  const data = await overpass(q);
+  if(!data){ $("#rPostosNota").textContent = "O serviço de mapas está fora do ar agora. Tente de novo em alguns minutos."; $("#rPostosN").textContent="—"; return; }
+  const cum=[0]; for(let k=1;k<l.geo.length;k++) cum.push(cum[k-1]+haversine(l.geo[k-1],l.geo[k]));
+  const fator = l.km / (cum[cum.length-1]||1);
+  const postos = data.elements.map(el => {
+    const t=el.tags||{}, la=el.lat??el.center?.lat, lo=el.lon??el.center?.lon; if(la==null) return null;
+    let best=0, bd=1e9; l.geo.forEach((g,k)=>{ const d=haversine(g,[la,lo]); if(d<bd){bd=d;best=k;} });
+    return {nome:t.name||t.brand||"Posto sem nome", marca:t.brand||"", lat:la, lng:lo, km:cum[best]*fator, h24:t.opening_hours==="24/7", tags:t};
+  }).filter(Boolean).sort((x,y)=>x.km-y.km);
+  $("#rPostosN").textContent = postos.length;
+  const autonomia = num(S.config.tanque)*consPlan();
+  $("#rPostosNota").textContent = postos.length ? `Distância contada a partir de ${a.nome}. Seu tanque cheio dá uns ${n1(autonomia)} km.` : "Nenhum posto cadastrado no mapa neste trecho. Abasteça antes de sair.";
+  let ultimoKm = 0;
+  $("#rPostos").innerHTML = postos.map(p => {
+    const gap = p.km-ultimoKm; ultimoKm = p.km;
+    return `<div class="item"><div class="ico fuel"><span class="num" style="font-weight:700;font-size:12px">${Math.round(p.km)}</span></div>
+      <div style="min-width:0"><div class="t">${esc(p.nome)}</div><div class="s">${esc([p.marca!==p.nome?p.marca:"", p.h24?"24h":""].filter(Boolean).join(" · "))}${gap>60?` <span class="chip warn">${Math.round(gap)} km sem posto antes</span>`:""}</div></div>
+      <div class="v">km ${Math.round(p.km)}<small>de ${esc(a.nome)}</small></div>
+      <div class="acts"><a class="btn sm waze" target="_blank" rel="noopener" href="${wazeUrl(p.lat,p.lng)}">Waze</a><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}">Ver no Google</a></div></div>`;
+  }).join("");
+  if(mapR){ layerRP.clearLayers(); postos.forEach(p=>L.circleMarker([p.lat,p.lng],{radius:6,color:"#fff",weight:2,fillColor:cor("--sun"),fillOpacity:1}).addTo(layerRP).bindPopup(`<b>${esc(p.nome)}</b><br>km ${Math.round(p.km)}`)); mapR.fitBounds(l.geo,{padding:[30,30]}); }
+}
+
+/* ---------- Mapa final ---------- */
+let mapF=null, layerF=null;
+function renderMapaFinal(){
+  const t = totais();
+  const dias = (S.config.ini && S.config.fim) ? noites(S.config.ini,S.config.fim)+1 : null;
+  const st = [
+    ["Distância", t.km>0 ? n1(t.km)+" km" : "—"], ["Total gasto", brl(t.total)],
+    ["Combustível", brl(t.fuel)], ["Litros", n1(t.litros)+" l"],
+    ["Hospedagem", brl(t.hosp)], ["Noites", String(t.noites)],
+    ["Consumo real", t.cons ? n1(t.cons)+" km/l" : "—"], ["Custo por km", t.km>0 ? brl(t.total/t.km) : "—"],
+    ["Por pessoa", brl(t.total/Math.max(1,num(S.config.pessoas)||1))], ["Por dia", dias ? brl(t.total/dias) : "—"]
+  ];
+  $("#fStats").innerHTML = st.map(([k,v])=>`<div class="stat"><span class="label">${k}</span><b>${v}</b></div>`).join("");
+  const grp = {};
+  todosLancamentos().forEach(x=>{ const c = x.cidade||"Sem cidade"; grp[c] = grp[c]||{f:0,h:0,o:0}; if(x._t==="abast") grp[c].f+=num(x.total); else if(x._t==="hosp") grp[c].h+=num(x.valor); else grp[c].o+=num(x.valor); });
+  const cs = Object.entries(grp).sort((a,b)=>(b[1].f+b[1].h+b[1].o)-(a[1].f+a[1].h+a[1].o));
+  $("#porCidade").innerHTML = cs.length ? cs.map(([c,v])=>`<div class="item"><div class="ico out">${ICON.out}</div><div style="min-width:0"><div class="t">${esc(c)}</div><div class="s">${[v.f?"combustível "+brl(v.f):"", v.h?"hospedagem "+brl(v.h):"", v.o?"outros "+brl(v.o):""].filter(Boolean).join(" · ")}</div></div><div class="v">${brl(v.f+v.h+v.o)}</div></div>`).join("") : `<div class="empty"><b>Sem lançamentos</b>Os gastos aparecem aqui agrupados por cidade.</div>`;
+
+  if(!window.L) return;
+  if(!mapF){ mapF = L.map("mapFinal").setView([-8.3,-36.5],7); tiles(mapF); layerF = L.layerGroup().addTo(mapF); }
+  setTimeout(()=>mapF.invalidateSize(),50);
+  layerF.clearLayers();
+  const pts = [];
+  const pontosEventos = todosLancamentos().filter(x=>x.lat).sort((a,b)=>a._d.localeCompare(b._d));
+  (S.legs||[]).forEach(l => L.polyline(l.geo,{color:cor("--muted"),weight:3,opacity:.6,dashArray:"2 7"}).addTo(layerF));
+  S.roteiro.forEach((p,i) => { L.circleMarker([p.lat,p.lng],{radius:6,color:cor("--ink"),weight:2,fillColor:cor("--surface"),fillOpacity:1}).addTo(layerF).bindPopup(`<b>${i+1}. ${esc(p.nome)}</b>`); pts.push([p.lat,p.lng]); });
+  if(S.trajeto.length>1){ const line=S.trajeto.map(p=>[p[0],p[1]]); L.polyline(line,{color:cor("--sun"),weight:5,opacity:.9}).addTo(layerF); pts.push(...line); }
+  else if(pontosEventos.length>1){ const line=pontosEventos.map(x=>[x.lat,x.lng]); L.polyline(line,{color:cor("--sun"),weight:4,dashArray:"8 8"}).addTo(layerF); }
+  pontosEventos.forEach(x=>{
+    const c = x._t==="abast" ? cor("--sea") : x._t==="hosp" ? cor("--coral") : cor("--leaf");
+    const l = x._t==="abast" ? "C" : x._t==="hosp" ? "H" : "$";
+    const titulo = x._t==="abast" ? (x.posto||"Abastecimento")+` — ${brl(x.total)} (${n1(x.litros)} l a ${brl(x.preco)})` : x._t==="hosp" ? `${x.nome} — ${brl(x.valor)}` : `${x.desc||x.cat} — ${brl(x.valor)}`;
+    L.marker([x.lat,x.lng],{icon:pinIcon(c,l)}).addTo(layerF).bindPopup(`<b>${esc(titulo)}</b><br>${esc(x.cidade||"")} ${fmtData(x._d)}`);
+    pts.push([x.lat,x.lng]);
+  });
+  if(pts.length>1) mapF.fitBounds(pts,{padding:[30,30]}); else if(pts.length===1) mapF.setView(pts[0],12);
+}
+$("#btnCopiar").onclick = async () => {
+  const t = totais();
+  const txt = `Viagem Pernambuco${S.config.veiculo?" ("+S.config.veiculo+")":""}\nDistância: ${n1(t.km)} km\nCombustível: ${brl(t.fuel)} · ${n1(t.litros)} l${t.pm?" · média "+brl(t.pm)+"/l":""}\nHospedagem: ${brl(t.hosp)} · ${t.noites} noites\nOutros: ${brl(t.out)}\nTOTAL: ${brl(t.total)}${t.km>0?" · "+brl(t.total/t.km)+"/km":""}${t.cons?"\nConsumo real: "+n1(t.cons)+" km/l":""}`;
+  try{ await navigator.clipboard.writeText(txt); toast("Resumo copiado"); }
+  catch(e){ if(navigator.share){ try{ await navigator.share({text:txt}); }catch(_){} } else toast("Não consegui copiar"); }
+};
+
+/* ---------- Ajustes ---------- */
+function renderAjustes(){
+  const c=S.config;
+  $("#cfgComb").innerHTML = COMBS.map(x=>`<option>${x}</option>`).join("");
+  $("#cfgVeic").value=c.veiculo; $("#cfgCons").value=c.consumo; $("#cfgTanque").value=c.tanque; $("#cfgPessoas").value=c.pessoas;
+  $("#cfgComb").value=c.comb; $("#cfgOdo").value=c.odoIni; $("#cfgIni").value=c.ini; $("#cfgFim").value=c.fim; $("#cfgOrig").value=c.origem; $("#cfgOrc").value=c.orcamento; $("#cfgPreco").value=c.precoRef||"";
+}
+$("#fCfg").addEventListener("submit", e => {
+  e.preventDefault();
+  S.config = {veiculo:$("#cfgVeic").value.trim(), consumo:num($("#cfgCons").value)||12, tanque:num($("#cfgTanque").value)||50, pessoas:num($("#cfgPessoas").value)||2, comb:$("#cfgComb").value, odoIni:$("#cfgOdo").value, ini:$("#cfgIni").value, fim:$("#cfgFim").value, origem:$("#cfgOrig").value.trim(), orcamento:$("#cfgOrc").value, precoRef:$("#cfgPreco").value};
+  $("#cCons").value=""; save(); toast("Ajustes salvos");
+});
+function baixar(nome, conteudo, tipo){ const b=new Blob([conteudo],{type:tipo}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=nome; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500); }
+$("#btnExport").onclick = () => baixar(`minha-rota-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(S,null,1), "application/json");
+$("#btnCsv").onclick = () => {
+  const linhas = [["tipo","data","nome","cidade","detalhe","litros","preco_litro","valor","hodometro","lat","lng"]];
+  todosLancamentos().reverse().forEach(x=>{
+    if(x._t==="abast") linhas.push(["combustivel",x.data,x.posto,x.cidade,x.comb,x.litros,x.preco,x.total,x.odo,x.lat,x.lng]);
+    else if(x._t==="hosp") linhas.push(["hospedagem",x.checkin,x.nome,x.cidade,`${x.plat} ${noites(x.checkin,x.checkout)} noites`,"","",x.valor,"",x.lat,x.lng]);
+    else linhas.push(["outro",x.data,x.desc,x.cidade,x.cat,"","",x.valor,"",x.lat,x.lng]);
+  });
+  baixar("minha-rota-gastos.csv", "﻿"+linhas.map(l=>l.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\n"), "text/csv");
+};
+$("#fileImport").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{ const j = JSON.parse(await f.text()); if(!j.abast || !j.config) throw 0; const d=def(); S={...d,...j,config:{...d.config,...j.config}}; save(); renderAjustes(); toast("Backup restaurado"); }
+  catch(_){ toast("Esse arquivo não é um backup do Minha Rota."); }
+  e.target.value="";
+};
+$("#btnLimpar").onclick = () => $("#confirmLimpar").hidden=false;
+$("#btnLimparNao").onclick = () => $("#confirmLimpar").hidden=true;
+$("#btnLimparSim").onclick = () => { S=def(); $("#confirmLimpar").hidden=true; save(); renderAjustes(); toast("Dados apagados"); };
+$("#btnExemplo").onclick = () => {
+  const d=def();
+  S = {...d, config:{...d.config, veiculo:"Exemplo · Onix 1.0", consumo:13, odoIni:"48210", ini:"2026-12-20", fim:"2026-12-28", pessoas:2, orcamento:"4500"},
+    abast:[
+      {id:uid(),posto:"Posto Exemplo BR-232",comb:"Gasolina comum",data:"2026-12-20T07:40",preco:6.29,litros:38.5,total:242.17,odo:"48210",cidade:"Recife",cheio:true,lat:-8.0631,lng:-34.9213},
+      {id:uid(),posto:"Posto Exemplo Gravatá",comb:"Gasolina comum",data:"2026-12-20T10:15",preco:6.19,litros:7.6,total:47.04,odo:"48298",cidade:"Gravatá",cheio:true,lat:-8.2011,lng:-35.5646},
+      {id:uid(),posto:"Posto Exemplo Caruaru",comb:"Gasolina comum",data:"2026-12-22T09:05",preco:6.15,litros:4.5,total:27.68,odo:"48352",cidade:"Caruaru",cheio:true,lat:-8.2845,lng:-35.9699},
+      {id:uid(),posto:"Posto Exemplo Ipojuca",comb:"Gasolina comum",data:"2026-12-25T16:30",preco:6.39,litros:15.2,total:97.13,odo:"48551",cidade:"Ipojuca",cheio:true,lat:-8.3986,lng:-35.0634}
+    ],
+    hosp:[
+      {id:uid(),nome:"Pousada Exemplo (Gravatá)",plat:"Booking",cidade:"Gravatá",checkin:"2026-12-20",checkout:"2026-12-22",valor:620,lat:-8.2050,lng:-35.5600},
+      {id:uid(),nome:"Apartamento Exemplo (Porto de Galinhas)",plat:"Airbnb",cidade:"Ipojuca",checkin:"2026-12-22",checkout:"2026-12-28",valor:2100,lat:-8.5047,lng:-35.0050}
+    ],
+    outros:[
+      {id:uid(),cat:"Pedágio",valor:7.6,desc:"Pedágio exemplo",data:"2026-12-25T15:50",cidade:"Cabo de Santo Agostinho",lat:-8.29,lng:-35.03},
+      {id:uid(),cat:"Alimentação",valor:142,desc:"Almoço exemplo",data:"2026-12-21T13:00",cidade:"Gravatá",lat:-8.2,lng:-35.565}
+    ], trajeto:[]};
+  save(); renderAjustes(); toast("Exemplo carregado. Apague antes de viajar.");
+};
+
+/* ---------- Início ---------- */
+function renderAll(){ renderInicio(); renderGastos(); if(!$("#v-mapa").hidden) renderMapaFinal(); if(!$("#v-perto").hidden) renderPertoHeader(); if(!$("#v-roteiro").hidden) renderRoteiro(); }
+renderAjustes(); renderAll(); go(location.hash.slice(1)||"inicio");
+if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+/* ---------- Instalador ---------- */
+let promptInstalar = null;
+const instalado = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function mostrarInstalar(){
+  const box = $("#instalarBox");
+  let adiado = false; try{ adiado = localStorage.getItem("minhaRota.instalarDepois")===new Date().toDateString(); }catch(e){}
+  if(instalado() || adiado){ box.hidden = true; return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  box.hidden = false;
+  if(promptInstalar){ $("#instalarTxt").textContent = "Fica com o ícone na tela do celular e abre como um aplicativo, até sem internet."; $("#btnInstalar").hidden = false; }
+  else if(ios){ $("#instalarTxt").textContent = "No Safari, toque em Compartilhar (quadrado com a seta para cima) e depois em “Adicionar à Tela de Início”."; $("#btnInstalar").hidden = true; }
+  else { $("#instalarTxt").textContent = "No Chrome, toque nos três pontinhos ⋮ no canto de cima e depois em “Instalar app” ou “Adicionar à tela inicial”."; $("#btnInstalar").hidden = true; }
+}
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); promptInstalar = e; mostrarInstalar(); });
+window.addEventListener("appinstalled", () => { $("#instalarBox").hidden = true; toast("Instalado! Procure o ícone Minha Rota na tela."); });
+$("#btnInstalar").onclick = async () => {
+  if(!promptInstalar) return;
+  promptInstalar.prompt();
+  const r = await promptInstalar.userChoice; promptInstalar = null;
+  if(r.outcome !== "accepted") mostrarInstalar();
+};
+$("#btnInstalarDepois").onclick = () => { try{ localStorage.setItem("minhaRota.instalarDepois", new Date().toDateString()); }catch(e){} $("#instalarBox").hidden = true; };
+mostrarInstalar();
+// tenta a localização sem incomodar se já houver permissão
+navigator.permissions?.query({name:"geolocation"}).then(p=>{ if(p.state==="granted") localizar(true).catch(()=>{}); }).catch(()=>{});
+</script>
+</body>
+</html>

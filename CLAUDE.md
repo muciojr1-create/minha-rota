@@ -24,5 +24,12 @@ App de celular para viagem de carro (Pernambuco): roteiro de cidades, combustív
 3. Faça commit na branch `main` e push. O GitHub Pages atualiza em cerca de 1 minuto.
 4. Diga ao usuário para fechar e abrir o app de novo no celular.
 
+## Quando o pedido vem do celular (Claude na nuvem)
+O usuário pede mudanças falando no app do Claude no celular (aba Code, projeto `minha-rota`). Nesse caso:
+- Faça a mudança, aumente o `CACHE` do `app/sw.js` e **leve para a branch `main`** — só o que está na `main` aparece no app. Se a sessão trabalhar numa branch própria, junte com a `main` (merge) e faça push da `main`.
+- Se o push para a `main` for bloqueado, abra um pull request e explique em português simples: "toque em **Merge** no GitHub para publicar".
+- No fim, responda curto: o que mudou e "feche e abra o app de novo daqui a 1 minuto".
+- Não pergunte coisas técnicas. Se algo não ficar claro, pergunte em palavras simples, uma coisa por vez.
+
 ## Serviços usados (grátis, sem chave)
 OpenStreetMap (mapa), Nominatim (achar cidades), OSRM (rotas), Overpass (postos e hotéis; às vezes cai), mapa ao vivo do Waze (embed.waze.com).
